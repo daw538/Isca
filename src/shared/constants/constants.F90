@@ -333,8 +333,6 @@ subroutine constants_init
 	else
 	    seconds_per_sol = abs(2*pi / (orbital_rate - omega))
 	endif
-	
-	!write(6,*) 'Seconds_per_sol: ', seconds_per_sol
 
     CP_AIR = RDGAS/KAPPA
     CP_VAPOR = 4.0*RVGAS
