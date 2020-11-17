@@ -165,8 +165,6 @@ contains
     
     val_min = log(esmin/(Tmin**(1.0/kappa))) 
     val_max = log(esmax/(Tmax**(1.0/kappa)))
-    
-    !write(6,*) esmin, esmax, Tmin, Tmax, val_min, val_max, 'Moist convection parameters: ' 
 
   end subroutine get_val_min_max
 
