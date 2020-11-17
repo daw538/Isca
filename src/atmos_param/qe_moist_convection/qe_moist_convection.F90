@@ -165,6 +165,8 @@ contains
     
     val_min = log(esmin/(Tmin**(1.0/kappa))) 
     val_max = log(esmax/(Tmax**(1.0/kappa)))
+    
+    !write(6,*) esmin, esmax, Tmin, Tmax, val_min, val_max, 'Moist convection parameters: ' 
 
   end subroutine get_val_min_max
 
@@ -1084,8 +1086,8 @@ contains
   real function lcl_temp(value, lcl_temp_guess)
     
     real, intent(in)      :: value, lcl_temp_guess
-    real, parameter       :: precision = 1.e-7
-    integer, parameter    :: max_iter = 100
+    real, parameter       :: precision = 1.e-6
+    integer, parameter    :: max_iter = 200
     real                  :: T, dT
     integer               :: iter 
     
