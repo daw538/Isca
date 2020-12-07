@@ -155,7 +155,8 @@ namelist/two_stream_gray_rad_nml/ solar_constant, del_sol, &
 
 integer :: id_olr, id_swdn_sfc, id_swdn_toa, id_net_lw_surf, id_lwdn_sfc, id_lwup_sfc, &
            id_tdt_rad, id_tdt_solar, id_flux_rad, id_flux_lw, id_flux_sw, id_coszen, id_fracsun, &
-           id_lw_dtrans, id_lw_dtrans_win, id_sw_dtrans, id_co2
+           id_lw_dtrans, id_lw_dtrans_win, id_sw_dtrans, id_co2, &
+           id_rrsun, id_dec, id_ang, id_true_anom, id_time_since_ae ! Orbital Diagnostics
 
 character(len=10), parameter :: mod_name = 'two_stream'
 
@@ -361,6 +362,26 @@ end select
                register_diag_field ( mod_name, 'co2', Time, &
                  'co2 concentration', &
                  'ppmv', missing_value=missing_value      )
+                 
+    
+    ! Orbital Diagnostics
+    
+    id_rrsun = register_diag_field ( mod_name, 'rrsun', &
+                   Time, 'Inverse distance to star', 'none')   
+
+    id_dec = register_diag_field ( mod_name, 'dec', &
+                   Time, 'Declination to star', 'none')
+
+    id_ang = register_diag_field ( mod_name, 'ang', &
+                   Time, 'True longitude', 'none')
+
+    id_true_anom = register_diag_field ( mod_name, 'true_anomaly', &
+                   Time, 'True anomaly', 'deg')  
+
+    id_time_since_ae = register_diag_field ( mod_name, 'time_since_ae', &
+                   Time, 'Time since autumnal equinox', 'none')   
+                   
+
 
   if (lw_scheme.eq.B_GEEN) then
     id_lw_dtrans_win  = &
@@ -398,7 +419,7 @@ real, intent(in), dimension(:,:,:)  :: t, q,  p_half
 integer :: i, j, k, n, dyofyr
 
 integer :: seconds, year_in_s, days
-real :: r_seconds, frac_of_day, frac_of_year, gmt, time_since_ae, rrsun, day_in_s, r_solday, r_total_seconds, r_days, r_dt_rad_avg, dt_rad_radians
+real :: r_seconds, frac_of_day, frac_of_year, gmt, time_since_ae, rrsun, day_in_s, r_solday, r_total_seconds, r_days, r_dt_rad_avg, dt_rad_radians, true_anomaly, dec_out, ang_out
 logical :: used
 
 
@@ -418,9 +439,12 @@ if (do_seasonal) then
   ! Seasonal Cycle: Use astronomical parameters to calculate insolation
   call get_time(Time_diag, seconds, days)
   call get_time(length_of_year(), year_in_s)
-  r_seconds = real(seconds)
   day_in_s = length_of_day()
-  frac_of_day = r_seconds / day_in_s
+  r_seconds = real(seconds)
+  r_days=real(days)
+  r_total_seconds=r_seconds+(r_days*86400.)
+
+  frac_of_day = r_total_seconds / day_in_s
 
   if(solday .ge. 0) then
       r_solday=real(solday)
@@ -440,12 +464,19 @@ if (do_seasonal) then
      r_dt_rad_avg=real(dt_rad_avg)
      dt_rad_radians = (r_dt_rad_avg/day_in_s)*2.0*pi
 
-     call diurnal_solar(lat, lon, gmt, time_since_ae, coszen, fracsun, rrsun, dt_rad_radians)
+     call diurnal_solar(lat, lon, gmt, time_since_ae, coszen, fracsun, rrsun, dt_rad_radians, true_anom=true_anomaly, dec_out=dec_out, ang_out=ang_out)
   else
-     call diurnal_solar(lat, lon, gmt, time_since_ae, coszen, fracsun, rrsun)
+     call diurnal_solar(lat, lon, gmt, time_since_ae, coszen, fracsun, rrsun, true_anom=true_anomaly, dec_out=dec_out, ang_out=ang_out)
   end if
 
-     insolation = solar_constant * coszen
+     insolation = solar_constant * coszen * rrsun
+
+     if (id_rrsun > 0) used = send_data ( id_rrsun, rrsun, Time_diag)
+     if (id_dec > 0) used = send_data ( id_dec, dec_out, Time_diag)
+     if (id_ang > 0) used = send_data ( id_ang, ang_out, Time_diag)
+     if (id_true_anom > 0) used = send_data ( id_true_anom, true_anomaly, Time_diag)
+     if (id_time_since_ae > 0) used = send_data ( id_time_since_ae, time_since_ae, Time_diag)
+     
 
 else if (sw_scheme==B_SCHNEIDER_LIU) then
   insolation = (solar_constant/pi)*cos(lat)

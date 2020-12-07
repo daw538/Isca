@@ -1121,7 +1121,7 @@ end subroutine get_ref_date_of_ae
 !
 subroutine diurnal_solar_2d (lat, lon, gmt, time_since_ae, cosz, &
                              fracday, rrsun, dt, allow_negative_cosz, &
-                             half_day_out)
+                             half_day_out, true_anom, dec_out, ang_out)
 
 !---------------------------------------------------------------------
 !    diurnal_solar_2d returns 2d fields of cosine of zenith angle,
@@ -1137,6 +1137,7 @@ real,                 intent(out)          :: rrsun
 real,                 intent(in), optional :: dt
 logical,              intent(in), optional :: allow_negative_cosz
 real, dimension(:,:), intent(out), optional :: half_day_out
+real,                 intent(out), optional :: true_anom, dec_out, ang_out
 
 
 !---------------------------------------------------------------------
@@ -1187,6 +1188,9 @@ real, dimension(:,:), intent(out), optional :: half_day_out
       ang = angle(time_since_ae)
       dec = declination(ang)
       rrsun  = r_inv_squared(ang)
+      
+      if (present(ang_out)) ang_out = ang
+      if (present(dec_out)) dec_out = dec   
 
 !---------------------------------------------------------------------
 !    define terms needed in the cosine zenith angle equation.
@@ -3701,7 +3705,6 @@ subroutine diurnal_exoplanet(lat, lon, Time, coszen, fracsun, rrsun, &
   ! r_seconds = real(seconds)
   ! day_in_s = length_of_day()
 
-
   !frac_of_day = r_seconds / day_in_s
   !frac_of_year = r_seconds / year_in_s
 
@@ -3710,6 +3713,7 @@ subroutine diurnal_exoplanet(lat, lon, Time, coszen, fracsun, rrsun, &
   !time_since_ae = modulo(frac_of_year,1.0) * 2.0 * pi
   call diurnal_solar_2d(lat, lon, gmt, time_since_ae, coszen, fracsun, rrsun,  &
                      dt, allow_negative_cosz, half_day_out)
+
 
 end subroutine diurnal_exoplanet
 
