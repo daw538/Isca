@@ -8,7 +8,7 @@ module idealized_moist_phys_mod
 
 use fms_mod, only: write_version_number, file_exist, close_file, stdlog, error_mesg, NOTE, FATAL, read_data, field_size, uppercase, mpp_pe
 
-use           constants_mod, only: grav, rdgas, rvgas, cp_air, PSTD_MKS, dens_h2o !mj cp_air needed for rrtmg !s pstd_mks needed for pref calculation
+use           constants_mod, only: grav, rdgas, rvgas, cp_air, PSTD_MKS, dens_vapor !mj cp_air needed for rrtmg !s pstd_mks needed for pref calculation
 
 use        time_manager_mod, only: time_type, get_time, operator( + )
 
@@ -140,6 +140,7 @@ real :: max_bucket_depth_land = 0.15 ! default from Manabe 1969
 real :: robert_bucket = 0.04   ! default robert coefficient for bucket depth LJJ
 real :: raw_bucket = 0.53       ! default raw coefficient for bucket depth LJJ
 ! end RG Add bucket
+logical :: finite_bucket_depth_over_land = .true. !!!!
 
 namelist / idealized_moist_phys_nml / turb, lwet_convection, do_bm, do_ras, roughness_heat,  &
                                       two_stream_gray, do_rrtm_radiation, do_damping,&
@@ -150,7 +151,7 @@ namelist / idealized_moist_phys_nml / turb, lwet_convection, do_bm, do_ras, roug
                                       gp_surface, convection_scheme,          &
                                       bucket, init_bucket_depth, init_bucket_depth_land, & !RG Add bucket 
                                       max_bucket_depth_land, robert_bucket, raw_bucket, &
-                                      do_socrates_radiation
+                                      do_socrates_radiation, finite_bucket_depth_over_land
 
 
 integer, parameter :: num_time_levels = 2 !RG Add bucket - number of time levels added to allow timestepping in this module
@@ -545,6 +546,8 @@ if(trim(land_option) .eq. 'input')then
 elseif(trim(land_option) .eq. 'zsurf')then
 	!s wherever zsurf is greater than some threshold height then make land = .true.
 	where ( z_surf > 10. ) land = .true.
+elseif(trim(land_option) .eq. 'all_land')then
+	land = .true.
 endif
 
 
@@ -829,7 +832,7 @@ case(SIMPLE_BETTS_CONV)
 
    conv_dt_tg = conv_dt_tg/delta_t
    conv_dt_qg = conv_dt_qg/delta_t
-   depth_change_conv = rain/dens_h2o     ! RG Add bucket
+   depth_change_conv = rain/dens_vapor     ! RG Add bucket
    rain       = rain/delta_t
    precip     = rain
 
@@ -858,7 +861,7 @@ case(FULL_BETTS_MILLER_CONV)
 
    conv_dt_tg = conv_dt_tg/delta_t
    conv_dt_qg = conv_dt_qg/delta_t
-   depth_change_conv = rain/dens_h2o     ! RG Add bucket
+   depth_change_conv = rain/dens_vapor     ! RG Add bucket
    rain       = rain/delta_t
    precip     = rain
 
@@ -937,7 +940,7 @@ if (r_conv_scheme .ne. DRY_CONV) then
 
   cond_dt_tg = cond_dt_tg/delta_t
   cond_dt_qg = cond_dt_qg/delta_t
-  depth_change_cond = rain/dens_h2o     ! RG Add bucket
+  depth_change_cond = rain/dens_vapor     ! RG Add bucket
   rain       = rain/delta_t
   snow       = snow/delta_t
   precip     = precip + rain + snow
@@ -1278,9 +1281,11 @@ if(bucket) then
    where (bucket_depth <= 0.) bucket_depth = 0.
 
    ! truncate surface reservoir over land points
+   if (finite_bucket_depth_over_land) then
        where(land .and. (bucket_depth(:,:,future) > max_bucket_depth_land))
             bucket_depth(:,:,future) = max_bucket_depth_land
        end where
+   endif
 
    if(id_bucket_depth > 0) used = send_data(id_bucket_depth, bucket_depth(:,:,future), Time)
    if(id_bucket_depth_conv > 0) used = send_data(id_bucket_depth_conv, depth_change_conv(:,:), Time)
