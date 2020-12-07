@@ -34,7 +34,7 @@ use        diag_manager_mod, only: register_diag_field, send_data
 
 use          transforms_mod, only: get_grid_domain
 
-use   spectral_dynamics_mod, only: get_axis_id, get_num_levels, get_surf_geopotential
+use   spectral_dynamics_mod, only: get_axis_id, get_num_levels, get_surf_geopotential, diffuse_surf_water
 
 use        surface_flux_mod, only: surface_flux, gp_surface_flux
 
@@ -139,6 +139,7 @@ real :: init_bucket_depth_land = 20.
 real :: max_bucket_depth_land = 0.15 ! default from Manabe 1969
 real :: robert_bucket = 0.04   ! default robert coefficient for bucket depth LJJ
 real :: raw_bucket = 0.53       ! default raw coefficient for bucket depth LJJ
+real :: damping_coeff_bucket = 0.
 ! end RG Add bucket
 logical :: finite_bucket_depth_over_land = .true. !!!!
 
@@ -151,12 +152,12 @@ namelist / idealized_moist_phys_nml / turb, lwet_convection, do_bm, do_ras, roug
                                       gp_surface, convection_scheme,          &
                                       bucket, init_bucket_depth, init_bucket_depth_land, & !RG Add bucket 
                                       max_bucket_depth_land, robert_bucket, raw_bucket, &
-                                      do_socrates_radiation, finite_bucket_depth_over_land
+                                      do_socrates_radiation, finite_bucket_depth_over_land, damping_coeff_bucket
 
 
 integer, parameter :: num_time_levels = 2 !RG Add bucket - number of time levels added to allow timestepping in this module
 real, allocatable, dimension(:,:,:)   :: bucket_depth      ! RG Add bucket
-real, allocatable, dimension(:,:    ) :: dt_bucket, filt   ! RG Add bucket
+real, allocatable, dimension(:,:    ) :: dt_bucket, filt, bucket_diffusion   ! RG Add bucket
 
 real, allocatable, dimension(:,:)   ::                                        &
      z_surf,               &   ! surface height
@@ -265,6 +266,7 @@ integer ::           &
      id_bucket_depth_conv, &   ! bucket depth variation induced by convection  - RG Add bucket
      id_bucket_depth_cond, &   ! bucket depth variation induced by condensation  - RG Add bucket
      id_bucket_depth_lh,   &   ! bucket depth variation induced by LH  - RG Add bucket
+     id_bucket_diffusion,  &   ! diffused surface water depth 
      id_rh,          & 	 ! Relative humidity
      id_diss_heat_ray,&  ! Heat dissipated by rayleigh bottom drag if gp_surface=.True.
      id_z_tg,        &   ! Relative humidity
@@ -428,6 +430,7 @@ allocate(bucket_depth (is:ie, js:je, num_time_levels)); bucket_depth = init_buck
 allocate(depth_change_lh(is:ie, js:je))                       ! RG Add bucket
 allocate(depth_change_cond(is:ie, js:je))                     ! RG Add bucket
 allocate(depth_change_conv(is:ie, js:je))                     ! RG Add bucket
+allocate(bucket_diffusion(is:ie, js:je))      
 allocate(z_surf      (is:ie, js:je))
 allocate(t_surf      (is:ie, js:je))
 allocate(q_surf      (is:ie, js:je)); q_surf = 0.0
@@ -646,6 +649,8 @@ if(bucket) then
        axes(1:2), Time, 'Tendency of bucket depth induced by Condensation', 'm/s')
   id_bucket_depth_lh = register_diag_field(mod_name, 'bucket_depth_lh',      &         ! RG Add bucket
        axes(1:2), Time, 'Tendency of bucket depth induced by LH', 'm/s')
+  id_bucket_diffusion = register_diag_field(mod_name, 'bucket_diffusion',  &  
+       axes(1:2), Time, 'Diffusion rate of bucket','m/s')  
 endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -808,6 +813,7 @@ endif
 if (bucket) then
   dt_bucket = 0.0                ! RG Add bucket
   filt      = 0.0                ! RG Add bucket
+  bucket_diffusion = 0.0
 endif
 
 rain = 0.0; snow = 0.0; precip = 0.0
@@ -1258,7 +1264,10 @@ if(bucket) then
 
    ! bucket time tendency
    dt_bucket = depth_change_cond + depth_change_conv - depth_change_lh
-   !change in bucket depth in one leapfrog timestep [m]                                 
+   !change in bucket depth in one leapfrog timestep [m]        
+   
+   !diffuse_surf_water transforms dt_bucket to spherical, diffuses water, and transforms back
+   call diffuse_surf_water(dt_bucket,bucket_depth(:,:,previous),delta_t,damping_coeff_bucket,bucket_diffusion)                         
 
    ! use the raw filter in leapfrog time stepping
 
@@ -1291,6 +1300,7 @@ if(bucket) then
    if(id_bucket_depth_conv > 0) used = send_data(id_bucket_depth_conv, depth_change_conv(:,:), Time)
    if(id_bucket_depth_cond > 0) used = send_data(id_bucket_depth_cond, depth_change_cond(:,:), Time)
    if(id_bucket_depth_lh > 0) used = send_data(id_bucket_depth_lh, depth_change_lh(:,:), Time)
+   if(id_bucket_diffusion > 0) used = send_data(id_bucket_diffusion, bucket_diffusion(:,:)/delta_t, Time)
 
 endif
 ! end Add bucket section
