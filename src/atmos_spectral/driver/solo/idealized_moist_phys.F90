@@ -132,7 +132,10 @@ character(len=256) :: land_file_name  = 'INPUT/land.nc'
 character(len=256) :: land_field_name = 'land_mask'
 
 ! RG Add bucket
-logical :: bucket = .false. 
+logical :: bucket = .true.
+character(len=256) :: bucket_type = 'uniform_depth' 
+character(len=256) :: bucket_file_name  = 'INPUT/bucket.nc'
+character(len=256) :: bucket_field_name = 'bucket_depth'
 integer :: future
 real :: init_bucket_depth = 1000. ! default large value
 real :: init_bucket_depth_land = 20. 
@@ -147,10 +150,11 @@ namelist / idealized_moist_phys_nml / turb, lwet_convection, do_bm, do_ras, roug
                                       two_stream_gray, do_rrtm_radiation, do_damping,&
                                       mixed_layer_bc, do_simple,                     &
                                       roughness_moist, roughness_mom, do_virtual,    &
-                                      land_option, land_file_name, land_field_name,   & !s options for idealised land
+                                      land_option, land_file_name, land_field_name,  & !s options for idealised land
                                       land_roughness_prefactor,               &
                                       gp_surface, convection_scheme,          &
-                                      bucket, init_bucket_depth, init_bucket_depth_land, & !RG Add bucket 
+                                      bucket, bucket_type, bucket_file_name, bucket_field_name, & 
+                                      init_bucket_depth, init_bucket_depth_land, & !RG Add bucket 
                                       max_bucket_depth_land, robert_bucket, raw_bucket, &
                                       do_socrates_radiation, finite_bucket_depth_over_land, damping_coeff_bucket
 
@@ -230,7 +234,8 @@ logical, allocatable, dimension(:,:) ::                                       &
      convect                   ! place holder. appears in calling arguments of vert_turb_driver but not used unless do_entrain=.true. -- pjp
 
 real, allocatable, dimension(:,:) ::                                          &
-     land_ones                 ! land points (all zeros)
+     land_ones,             &   ! land points (all zeros)
+     bucket_ones			   ! empty bucket values 	! DW
 
 real, allocatable, dimension(:,:) ::                                          &
      klzbs,                &   ! stored level of zero buoyancy values
@@ -471,6 +476,7 @@ allocate(q_2m        (is:ie, js:je)) ! Add 2m specific humidity
 allocate(rh_2m       (is:ie, js:je)) ! Add 2m relative humidity
 allocate(land        (is:ie, js:je)); land = .false.
 allocate(land_ones   (is:ie, js:je)); land_ones = 0.0
+allocate(bucket_ones (is:ie, js:je)); bucket_ones = 0.0
 allocate(avail       (is:ie, js:je)); avail = .true.
 allocate(fracland    (is:ie, js:je)); fracland = 0.0
 allocate(rough       (is:ie, js:je))
@@ -540,7 +546,7 @@ if(trim(land_option) .eq. 'input')then
 	     endif
 	   else
 	     call error_mesg('idealized_moist_phys','land_option="'//trim(land_option)//'"'// &
-	                     ' but '//trim(land_file_name)//' does not exist', FATAL)
+	                     ' but '//trim(land_file_name)//' does not exFbuist', FATAL)
 	   endif
 
 	!s convert data in land nc file to land logical array
@@ -567,11 +573,41 @@ if(trim(land_option) .eq. 'input') then
 endif
 
 !RG Add bucket - initialise bucket depth
-if(bucket) then
-where(land)
-  bucket_depth(:,:,1)  = init_bucket_depth_land
-  bucket_depth(:,:,2)  = init_bucket_depth_land
-end where
+if (bucket) then
+  if(trim(bucket_type) .eq. 'uniform_depth') then
+    where(land)
+      bucket_depth(:,:,1)  = init_bucket_depth_land
+      bucket_depth(:,:,2)  = init_bucket_depth_land
+    end where
+
+  elseif(trim(bucket_type) .eq. 'input_depth') then
+    if(file_exist(trim(bucket_file_name))) then
+      call mpp_get_global_domain(grid_domain, xsize=global_num_lon, ysize=global_num_lat)
+      call field_size(trim(bucket_file_name), trim(bucket_field_name), siz)
+     
+
+      if ( siz(1) == global_num_lon .or. siz(2) == global_num_lat ) then
+        call read_data(trim(bucket_file_name), trim(bucket_field_name), bucket_ones, grid_domain)
+          where(land)
+            bucket_depth(:,:,1)  = bucket_ones
+            bucket_depth(:,:,2)  = bucket_ones
+          end where
+          !s write something to screen to let the user know what's happening.
+      else
+        write(ctmp1(1: 4),'(i4)') siz(1)
+        write(ctmp1(9:12),'(i4)') siz(2)
+        write(ctmp2(1: 4),'(i4)') global_num_lon
+        write(ctmp2(9:12),'(i4)') global_num_lat
+        call error_mesg ('idealized_moist_phys','Bucket depth file contains data on a '// &
+               ctmp1//' grid, but atmos model grid is '//ctmp2, FATAL)
+      endif
+    else
+      call error_mesg('idealized_moist_phys','land_option="'//trim(land_option)//'"'// &
+                     ' but '//trim(bucket_file_name)//' does not exFbuist', FATAL)
+
+    endif
+  
+  endif
 endif
 !RG end Add bucket
 
