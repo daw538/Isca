@@ -132,7 +132,7 @@ character(len=256) :: land_file_name  = 'INPUT/land.nc'
 character(len=256) :: land_field_name = 'land_mask'
 
 ! RG Add bucket
-logical :: bucket = .true.
+logical :: bucket = .false.
 character(len=256) :: bucket_type = 'uniform_depth' 
 character(len=256) :: bucket_file_name  = 'INPUT/bucket.nc'
 character(len=256) :: bucket_field_name = 'bucket_depth'
@@ -546,7 +546,7 @@ if(trim(land_option) .eq. 'input')then
 	     endif
 	   else
 	     call error_mesg('idealized_moist_phys','land_option="'//trim(land_option)//'"'// &
-	                     ' but '//trim(land_file_name)//' does not exFbuist', FATAL)
+	                     ' but '//trim(land_file_name)//' does not exist', FATAL)
 	   endif
 
 	!s convert data in land nc file to land logical array
