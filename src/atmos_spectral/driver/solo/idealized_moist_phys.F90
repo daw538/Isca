@@ -33,11 +33,11 @@ use      dry_convection_mod, only: dry_convection_init, dry_convection
 use        diag_manager_mod, only: register_diag_field, send_data
 
 #ifdef COLUMN_MODEL 
-use              column_mod, only: get_num_levels, get_surf_geopotential, get_axis_id
-use            spec_mpp_mod, only: get_grid_domain, grid_domain 
+    use              column_mod, only: get_num_levels, get_surf_geopotential, get_axis_id
+    use            spec_mpp_mod, only: get_grid_domain, grid_domain 
 #else
-use          transforms_mod, only: get_grid_domain, grid_domain
-use   spectral_dynamics_mod, only: get_axis_id, get_num_levels, get_surf_geopotential, diffuse_surf_water
+    use          transforms_mod, only: get_grid_domain, grid_domain
+    use   spectral_dynamics_mod, only: get_axis_id, get_num_levels, get_surf_geopotential, diffuse_surf_water
 #endif 
 
 use        surface_flux_mod, only: surface_flux, gp_surface_flux
@@ -549,7 +549,6 @@ if(trim(land_option) .eq. 'input')then
 	where(land_ones > 0.) land = .true.
 
 elseif(trim(land_option) .eq. 'zsurf')then
-	!s wherever zsurf is greater than some threshold height then make land = .true.
 	where ( z_surf > 10. ) land = .true.
 elseif(trim(land_option) .eq. 'all_land')then
 	land = .true.
@@ -1270,7 +1269,7 @@ if(bucket) then
    !change in bucket depth in one leapfrog timestep [m]        
    
    !diffuse_surf_water transforms dt_bucket to spherical, diffuses water, and transforms back
-   call diffuse_surf_water(dt_bucket,bucket_depth(:,:,previous),delta_t,damping_coeff_bucket,bucket_diffusion)                         
+   !call diffuse_surf_water(dt_bucket,bucket_depth(:,:,previous),delta_t,damping_coeff_bucket,bucket_diffusion)                         
 
    ! use the raw filter in leapfrog time stepping
 
