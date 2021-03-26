@@ -254,6 +254,7 @@ real, public, parameter :: PSTD_MKS_EARTH = 101325.0
 real, public :: RADIUS = 6376.0e3
 real, public :: GRAV   = EARTH_GRAV
 real, public :: OMEGA  = EARTH_OMEGA                         ! planetary rotation rate in s^-1
+real, public :: ROTATION_PERIOD = -1.0
 real, public :: ORBITAL_PERIOD = EARTH_ORBITAL_PERIOD        ! orbital period (periapse -> periapse) in s
 real, public :: SECONDS_PER_SOL = SECONDS_PER_DAY
 real, public :: orbital_rate  ! this is calculated from 2pi/orbital_period
@@ -267,7 +268,7 @@ real, public :: CP_AIR = EARTH_CP_AIR
 real, public :: es0 = DEF_ES0
 logical :: earthday_multiple = .false.
 
-namelist/constants_nml/ radius, grav, omega, orbital_period, pstd, pstd_mks, rdgas, kappa, solar_const, earthday_multiple, es0
+namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, rdgas, kappa, solar_const, earthday_multiple, es0
 
 !-----------------------------------------------------------------------
 ! version and tagname published
@@ -298,6 +299,13 @@ subroutine constants_init
     10 call close_file (unit)
 
     if (mpp_pe() == mpp_root_pe()) write (stdlog(),nml=constants_nml)
+         
+    if (rotation_period.gt.0) then
+        omega = 2.*pi/rotation_period
+
+       call error_mesg( 'constants_init','rotation_period has been specified, so omega calculated from rotation_period', NOTE)
+
+    endif
 
     !> SECONDS_PER_SOL is the exoplanet equivalent of seconds_per_day.
     !! It is the number of seconds between sucessive solar zeniths at longitude 0.
