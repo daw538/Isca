@@ -117,9 +117,9 @@ real, public, parameter :: RHO_CP  = RHO0*CP_OCEAN
 ! </DATA>
 
 real, public, parameter :: DEF_ES0 = 1.0
-!real, public, parameter :: RVGAS_H2O = 461.50
-real, public, parameter :: RVGAS = 461.50
-real, public, parameter :: CP_VAPOR_H2O = 4.0*RVGAS
+real, public, parameter :: RVGAS_H2O = 461.50
+!real, public, parameter :: RVGAS = 461.50
+real, public, parameter :: CP_VAPOR_H2O = 4.0*RVGAS_H2O
 real, public, parameter :: DENS_H2O = 1000.
 real, public, parameter :: HLV_H2O = 2.500e6
 real, public, parameter :: HLF_H2O = 3.34e5
@@ -166,7 +166,7 @@ real, public, parameter :: TPPRESS_H2O = 610.78
 ! </DATA>
 
 real, public, parameter :: WTMAIR = 2.896440E+01
-real, public, parameter :: WTMH2O = WTMAIR*(EARTH_RDGAS/RVGAS) !pjp OK to change value because not used yet.
+real, public, parameter :: WTMH2O = WTMAIR*(EARTH_RDGAS/RVGAS_H2O) !pjp OK to change value because not used yet.
 !real, public, parameter :: WTMO3  = 47.99820E+01
 real, public, parameter :: WTMOZONE =  47.99820
 real, public, parameter :: WTMC     =  12.00000
@@ -276,12 +276,12 @@ real, public :: HLS = HLS_H2O
 real, public :: TFREEZE = TFREEZE_H2O
 real, public :: TPPRESS = TPPRESS_H2O
 real, public :: DENS_LIQUID = DENS_H2O
-!real, public :: RVGAS = RVGAS_H2O
+real, public :: RVGAS = RVGAS_H2O
 real, public :: CP_VAPOR = CP_VAPOR_H2O
 
 namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, &
                         rdgas, kappa, solar_const, earthday_multiple, es0, hlf, hlv, hls, &
-                        tfreeze, tppress, dens_liquid !rvgas
+                        tfreeze, tppress, dens_liquid, rvgas
 
 !-----------------------------------------------------------------------
 ! version and tagname published
