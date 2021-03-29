@@ -120,9 +120,9 @@ real, public, parameter :: DEF_ES0 = 1.0
 real, public, parameter :: RVGAS = 461.50
 real, public, parameter :: CP_VAPOR = 4.0*RVGAS
 real, public, parameter :: DENS_H2O = 1000.
-real, public, parameter :: HLV = 2.500e6
-real, public, parameter :: HLF = 3.34e5
-real, public, parameter :: HLS = HLV + HLF
+real, public, parameter :: HLV_H2O = 2.500e6
+real, public, parameter :: HLF_H2O = 3.34e5
+real, public, parameter :: HLS_H2O = HLV_H2O + HLF_H2O
 real, public, parameter :: TFREEZE = 273.16
 
 !-------------- radiation constants -----------------
@@ -268,7 +268,12 @@ real, public :: CP_AIR = EARTH_CP_AIR
 real, public :: es0 = DEF_ES0
 logical :: earthday_multiple = .false.
 
-namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, rdgas, kappa, solar_const, earthday_multiple, es0
+real, public :: HLV = HLV_H2O
+real, public :: HLF = HLF_H2O
+real, public :: HLS = HLS_H2O
+
+namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, &
+                        rdgas, kappa, solar_const, earthday_multiple, es0, hlf, hlv, hls
 
 !-----------------------------------------------------------------------
 ! version and tagname published
@@ -322,6 +327,7 @@ subroutine constants_init
 	endif
 
     CP_AIR = RDGAS/KAPPA
+    HLS = HLF + HLV
 
     constants_initialised = .true.
 
