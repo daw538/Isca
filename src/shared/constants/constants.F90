@@ -123,7 +123,8 @@ real, public, parameter :: DENS_H2O = 1000.
 real, public, parameter :: HLV_H2O = 2.500e6
 real, public, parameter :: HLF_H2O = 3.34e5
 real, public, parameter :: HLS_H2O = HLV_H2O + HLF_H2O
-real, public, parameter :: TFREEZE = 273.16
+real, public, parameter :: TFREEZE_H2O = 273.16
+real, public, parameter :: TPPRESS_H2O = 610.78
 
 !-------------- radiation constants -----------------
 
@@ -271,9 +272,12 @@ logical :: earthday_multiple = .false.
 real, public :: HLV = HLV_H2O
 real, public :: HLF = HLF_H2O
 real, public :: HLS = HLS_H2O
+real, public :: TFREEZE = TFREEZE_H2O
+real, public :: TPPRESS = TPPRESS_H2O
 
 namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, &
-                        rdgas, kappa, solar_const, earthday_multiple, es0, hlf, hlv, hls
+                        rdgas, kappa, solar_const, earthday_multiple, es0, hlf, hlv, hls, &
+                        tfreeze, tppress
 
 !-----------------------------------------------------------------------
 ! version and tagname published
