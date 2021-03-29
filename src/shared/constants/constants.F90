@@ -274,10 +274,11 @@ real, public :: HLF = HLF_H2O
 real, public :: HLS = HLS_H2O
 real, public :: TFREEZE = TFREEZE_H2O
 real, public :: TPPRESS = TPPRESS_H2O
+real, public :: DENS_LIQUID = DENS_H2O
 
 namelist/constants_nml/ radius, grav, omega, orbital_period, rotation_period, pstd, pstd_mks, &
                         rdgas, kappa, solar_const, earthday_multiple, es0, hlf, hlv, hls, &
-                        tfreeze, tppress
+                        tfreeze, tppress, dens_liquid
 
 !-----------------------------------------------------------------------
 ! version and tagname published
