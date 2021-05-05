@@ -33,7 +33,7 @@ MODULE socrates_interface_mod
   USE def_control, ONLY: StrCtrl,  allocate_control,   deallocate_control
   USE def_spectrum
   USE constants_mod, only: grav, rdgas, rvgas, cp_air
-  USE fms_mod, only: stdlog, FATAL, WARNING, error_mesg
+  USE fms_mod, only: stdlog, NOTE, FATAL, WARNING, error_mesg
   USE interpolator_mod, only: interpolate_type  
   USE soc_constants_mod  
 
@@ -489,7 +489,8 @@ write(stdlog_unit, socrates_rad_nml)
     real, dimension(n_profile, n_layer) :: input_p, input_t, input_mixing_ratio, &
          input_d_mass, input_density, input_layer_heat_capacity, &
          soc_heating_rate, input_o3_mixing_ratio, &
-          input_co2_mixing_ratio,z_full_reshaped
+          input_co2_mixing_ratio, input_ch4_mixing_ratio, &
+          z_full_reshaped
     real, dimension(n_profile, 0:n_layer) :: input_p_level, input_t_level, soc_flux_direct, &
          soc_flux_down, soc_flux_up, z_half_reshaped
     real, dimension(n_profile) :: input_t_surf, input_cos_zenith_angle, input_solar_irrad, &
@@ -532,10 +533,18 @@ write(stdlog_unit, socrates_rad_nml)
           input_p = reshape(fms_p_full(:,:,:),(/si*sj,sk /))
           input_p_level = reshape(fms_p_half(:,:,:),(/si*sj,sk+1 /))
           
-          if (account_for_effect_of_water == .true.) then
+          if ((account_for_effect_of_water == .true.) .and. (do_condensate_ch4 == .true.)) then
+              call error_mesg('socrates_interface','Cannot set water and methane as condensing species simultaneously.',FATAL)
+          elseif ((account_for_effect_of_water == .true.) .and. (do_condensate_ch4 == .false.)) then
               input_mixing_ratio = reshape(fms_spec_hum(:,:,:) / (1. - fms_spec_hum(:,:,:)),(/si*sj,sk /)) !Mass mixing ratio = q / (1-q)
+              input_ch4_mixing_ratio = ch4_mix_ratio
+          elseif ((account_for_effect_of_water == .false.) .and. (do_condensate_ch4 == .true.)) then
+              input_ch4_mixing_ratio = reshape(fms_spec_hum(:,:,:) / (1. - fms_spec_hum(:,:,:)),(/si*sj,sk /)) !Mass mixing ratio = q / (1-q)
+              input_mixing_ratio = 0.0
+              call error_mesg('socrates_interface','Using specific humidity as mixing ratio for methane.', NOTE)
           else
               input_mixing_ratio = 0.0
+              input_ch4_mixing_ratio = ch4_mix_ratio
           endif
           
           if (account_for_effect_of_ozone == .true.) then
@@ -543,8 +552,9 @@ write(stdlog_unit, socrates_rad_nml)
           else         
             input_o3_mixing_ratio = 0.0
           endif
-
-         input_co2_mixing_ratio = reshape(fms_co2(:,:,:),(/si*sj,sk /))
+          
+          input_co2_mixing_ratio = reshape(fms_co2(:,:,:),(/si*sj,sk /))
+                
 
           !-------------
 
@@ -644,6 +654,7 @@ write(stdlog_unit, socrates_rad_nml)
                input_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                         &
                input_o3_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                      &
                input_co2_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                     &
+               input_ch4_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                     &
                input_t_surf(idx_chunk_start:idx_chunk_end),                                 &
                input_cos_zenith_angle(idx_chunk_start:idx_chunk_end),                       &
                input_solar_irrad(idx_chunk_start:idx_chunk_end),                            &
@@ -670,6 +681,7 @@ write(stdlog_unit, socrates_rad_nml)
                input_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                         &
                input_o3_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                      &
                input_co2_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                     &
+               input_ch4_mixing_ratio(idx_chunk_start:idx_chunk_end,:),                     &
                input_t_surf(idx_chunk_start:idx_chunk_end),                                 &
                input_cos_zenith_angle(idx_chunk_start:idx_chunk_end),                       &
                input_solar_irrad(idx_chunk_start:idx_chunk_end),                            &

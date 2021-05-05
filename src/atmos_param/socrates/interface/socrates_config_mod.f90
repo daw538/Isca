@@ -38,7 +38,10 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
   character(len=256) :: co2_field_name='co2' !Name of co2 variable in co2 file  
   real(r_def) :: input_planet_emissivity = 1.0 !Emissivity of surface. Defined as constant all over surface.
   real :: co2_ppmv = 300. !Default CO2 concentration in PPMV
-  logical ::  input_co2_mmr=.false. !Socrates wants input concentrations as mmr not vmr, so need to make sure input data supplied is converted if necessary
+  logical :: input_co2_mmr=.false. !Socrates wants input concentrations as mmr not vmr, so need to make sure input data supplied is converted if necessary
+  logical :: do_condensate_ch4 = .FALSE. ! If true radation is fed mixing ratio based upon model specific humidity, otherwise global value set bu ch4_mixing_ratio
+  real(r_def) :: ch4_mix_ratio = 1.006e-06 ! Default mass mixing ratio for methane if not being considered as a condensing species
+  
 
   logical :: use_pressure_interp_for_half_levels = .False. !By default (.False.) does linear interpolation in height for half-level temperatures. True does linear interp using pressure. 
       
@@ -60,7 +63,6 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
   REAL(r_def) :: co_mix_ratio = 0.0
   REAL(r_def) :: n2o_mix_ratio = 4.945e-07
   REAL(r_def) :: n2_mix_ratio = 0.0
-  REAL(r_def) :: ch4_mix_ratio = 1.006e-06
   REAL(r_def) :: o2_mix_ratio = 0.2314
   REAL(r_def) :: so2_mix_ratio = 0.0
   REAL(r_def) :: h2_mix_ratio = 0.0
@@ -124,7 +126,7 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
                              input_planet_emissivity, co2_ppmv, &
                              account_for_effect_of_water, account_for_effect_of_ozone, &
                              do_read_ozone, ozone_file_name, ozone_field_name, input_o3_file_is_mmr, &
-                             do_read_co2, co2_file_name, co2_field_name, input_co2_mmr, &                             
+                             do_read_co2, co2_file_name, co2_field_name, input_co2_mmr, do_condensate_ch4, &                             
                              solday, do_rad_time_avg, equinox_day,  &
                              store_intermediate_rad, dt_rad_avg, dt_rad, &
                              chunk_size, &

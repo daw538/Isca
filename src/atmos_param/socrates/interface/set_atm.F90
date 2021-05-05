@@ -10,7 +10,7 @@ CONTAINS
 ! Subroutine to set the input atmospheric profiles for the core radiation code
 !------------------------------------------------------------------------------
 SUBROUTINE set_atm(control, dimen, spectrum, atm, n_profile, n_layer,          &
-  p_layer, t_layer, t_layer_boundaries, d_mass, density, h2o, o3, co2)
+  p_layer, t_layer, t_layer_boundaries, d_mass, density, h2o, o3, co2, ch4)
 
 USE rad_pcf
 USE def_control,  ONLY: StrCtrl
@@ -61,6 +61,8 @@ REAL(r_def), INTENT(IN) :: o3(n_profile, n_layer)
 !   Mass mixing ratio of ozone
 REAL(r_def), INTENT(IN) :: co2(n_profile, n_layer)
 !   Mass mixing ratio of co2
+REAL(r_def), INTENT(IN) :: ch4(n_profile, n_layer)
+!   Mass mixing ratio of ch4
 
 ! Local variables.
 INTEGER :: i, l, i_gas
@@ -137,7 +139,7 @@ DO i_gas=1, spectrum%gas%n_absorb
   CASE(ip_ch4)
     DO i=1, n_layer
       DO l=1, n_profile
-        atm%gas_mix_ratio(l, i, i_gas) = ch4_mix_ratio
+        atm%gas_mix_ratio(l, i, i_gas) = ch4(l,i)
       END DO
     END DO
 
