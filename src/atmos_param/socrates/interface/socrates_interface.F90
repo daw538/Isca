@@ -418,6 +418,9 @@ write(stdlog_unit, socrates_rad_nml)
        PRINT*, 'Longwave hires spectral file = ', TRIM(control_lw_hires%spectral_file), ' WITH ', n_soc_bands_lw_hires, ' bands'
        PRINT*, 'Shortwave spectral file = ', TRIM(control_sw%spectral_file), ' WITH ', n_soc_bands_sw, ' bands'
        PRINT*, 'Shortwave hires spectral file = ', TRIM(control_sw_hires%spectral_file), ' WITH ', n_soc_bands_sw_hires, ' bands'
+       if ((account_for_effect_of_water == .false.) .and. (do_condensate_ch4 == .true.)) then
+           PRINT*, 'Titan modification applied: Using specific humidity as mixing ratio for methane.'
+       end if
        PRINT*, ' '
        PRINT*, '-----------------------------------'
        PRINT*, ' '
@@ -539,9 +542,9 @@ write(stdlog_unit, socrates_rad_nml)
               input_mixing_ratio = reshape(fms_spec_hum(:,:,:) / (1. - fms_spec_hum(:,:,:)),(/si*sj,sk /)) !Mass mixing ratio = q / (1-q)
               input_ch4_mixing_ratio = ch4_mix_ratio
           elseif ((account_for_effect_of_water == .false.) .and. (do_condensate_ch4 == .true.)) then
+              !call error_mesg('socrates_interface','Using specific humidity as mixing ratio for methane.', NOTE)
               input_ch4_mixing_ratio = reshape(fms_spec_hum(:,:,:) / (1. - fms_spec_hum(:,:,:)),(/si*sj,sk /)) !Mass mixing ratio = q / (1-q)
               input_mixing_ratio = 0.0
-              call error_mesg('socrates_interface','Using specific humidity as mixing ratio for methane.', NOTE)
           else
               input_mixing_ratio = 0.0
               input_ch4_mixing_ratio = ch4_mix_ratio
