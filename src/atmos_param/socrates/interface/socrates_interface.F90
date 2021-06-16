@@ -19,7 +19,7 @@ MODULE socrates_interface_mod
 #ifdef INTERNAL_FILE_NML
   use mpp_mod, only: input_nml_file
 #else
-  use fms_mod, only: open_namelist_file, close_file
+  use fms_mod, only: open_namelist_file, close_file, check_nml_error
 #endif
 
   ! ExoFMS diagnostics
@@ -63,6 +63,10 @@ MODULE socrates_interface_mod
   INTEGER :: n_soc_bands_lw, n_soc_bands_sw
   INTEGER :: n_soc_bands_lw_hires, n_soc_bands_sw_hires
   INTEGER :: id_soc_bins_lw, id_soc_bins_sw
+  integer :: id_rrsun, id_dec, id_ang, id_true_anom, id_time_since_ae ! Orbital Diagnostics
+  
+  REAL(r_def) :: ang_out_store, dec_out_store, true_anomaly_store, rrsun_store, time_since_ae_store
+  
   CHARACTER(len=10), PARAMETER :: soc_mod_name = 'socrates'
   REAL :: missing_value = -999
 
@@ -95,7 +99,7 @@ CONTAINS
     REAL, INTENT(in) , DIMENSION(:,:)   :: lat
     REAL, INTENT(in) , DIMENSION(:,:)   :: lonb, latb
         
-    integer :: io, stdlog_unit
+    integer :: io, stdlog_unit, ierr
     integer :: res, time_step_seconds
     real    :: day_in_s_check
 
@@ -107,8 +111,11 @@ CONTAINS
 #else
    if ( file_exist('input.nml') ) then
       nml_unit = open_namelist_file()
-      read (nml_unit, socrates_rad_nml, iostat=io)
-      call close_file(nml_unit)
+      do while (ierr/=0)
+        read (nml_unit, socrates_rad_nml, iostat=io)
+        ierr = check_nml_error (io, 'socrates_rad_nml')
+      enddo
+      call close_file(nml_unit) 
    endif
 #endif
 stdlog_unit = stdlog()
@@ -314,6 +321,23 @@ write(stdlog_unit, socrates_rad_nml)
          'mmr', missing_value=missing_value               )
 
 
+    ! Orbital Diagnostics
+    id_rrsun = register_diag_field ( soc_mod_name, 'rrsun', &
+                   Time, 'inverse planet sun distance', 'none')   
+
+    id_ang = register_diag_field ( soc_mod_name, 'ang', &
+                   Time, 'ang', 'none')   
+
+    id_dec = register_diag_field ( soc_mod_name, 'dec', &
+                   Time, 'dec', 'none')
+                   
+    id_true_anom = register_diag_field ( soc_mod_name, 'true_anomaly', &
+                   Time, 'True anomaly', 'deg') 
+                   
+    id_time_since_ae = register_diag_field ( soc_mod_name, 'time_since_ae', &
+                   Time, 'time since ae', 'none')
+
+
       if(do_read_ozone)then
          call interpolator_init (o3_interp, trim(ozone_file_name)//'.nc', lonb, latb, data_out_of_bounds=(/ZERO/))
       endif
@@ -401,7 +425,23 @@ write(stdlog_unit, socrates_rad_nml)
             else
                 allocate(spectral_olr_store(size(lonb,1)-1, size(latb,2)-1, n_soc_bands_lw ))
             endif
-        endif 
+        endif
+        
+        if (id_ang > 0) then
+            ang_out_store = 0.
+        endif            
+        if (id_dec > 0) then
+            dec_out_store = 0.
+        endif                     
+        if (id_rrsun > 0) then
+            rrsun_store = 0.
+        endif
+        if (id_true_anom > 0) then
+            true_anomaly_store = 0.
+        endif  
+        if (id_time_since_ae > 0) then
+            time_since_ae_store = 0.
+        endif     
 
     endif
 
@@ -733,7 +773,7 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
 
     logical :: soc_lw_mode, used
     integer :: seconds, days, year_in_s
-    real :: r_seconds, r_days, r_total_seconds, frac_of_day, frac_of_year, gmt, time_since_ae, rrsun, dt_rad_radians, day_in_s, r_solday, r_dt_rad_avg
+    real :: r_seconds, r_days, r_total_seconds, frac_of_day, frac_of_year, gmt, time_since_ae, rrsun, dt_rad_radians, day_in_s, r_solday, r_dt_rad_avg, dec_out, ang_out, true_anomaly
     real, dimension(size(temp_in,1), size(temp_in,2)) :: coszen, fracsun, surf_lw_net, olr, toa_sw, p2, toa_sw_down, surf_sw_down 
     real, dimension(size(temp_in,1), size(temp_in,2), size(temp_in,3)) :: ozone_in, co2_in
     real, dimension(size(temp_in,1), size(temp_in,2), size(temp_in,3)+1) :: thd_sw_flux_net, thd_lw_flux_net
@@ -801,6 +841,23 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
                 if (id_soc_spectral_olr > 0) then
                     outputted_soc_spectral_olr = spectral_olr_store
                 endif
+                
+				if (id_ang > 0) then
+                    ang_out= ang_out_store 
+                endif 
+                if (id_dec > 0) then
+                    dec_out =  dec_out_store
+                endif            
+                if (id_rrsun > 0) then
+                    rrsun = rrsun_store
+                endif
+                if (id_true_anom > 0) then
+                    true_anomaly = true_anomaly_store
+                endif          
+                if (id_time_since_ae > 0) then
+                    time_since_ae = time_since_ae_store
+                endif          
+                
              else
                 output_heating_rate_sw = 0.
                 output_heating_rate_lw = 0.
@@ -815,6 +872,11 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
                 ozone_in = 0.
                 co2_in = 0.
                 outputted_soc_spectral_olr = 0.
+                time_since_ae = 0.
+                dec_out = 0.
+                ang_out = 0.
+                true_anomaly = 0.
+                rrsun = 0.
              endif
 
              temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_sw)+real(output_heating_rate_lw)
@@ -869,7 +931,24 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
             endif
             if(id_soc_spectral_olr > 0) then 
                 used = send_data ( id_soc_spectral_olr, outputted_soc_spectral_olr, Time_diag)
-            endif             
+            endif
+            
+                      
+            if (id_dec > 0) then
+                used = send_data ( id_dec, dec_out, Time_diag)
+            endif            
+            if (id_ang > 0) then
+                used = send_data ( id_ang, ang_out, Time_diag)
+            endif              
+            if (id_rrsun > 0) then
+                used = send_data ( id_rrsun, rrsun, Time_diag)        
+            endif
+            if (id_true_anom > 0) then
+                used = send_data ( id_true_anom, true_anomaly, Time_diag)
+            endif   
+            if (id_time_since_ae > 0) then
+                used = send_data ( id_time_since_ae, time_since_ae, Time_diag)
+            endif      
             ! Diagnostics sent 
 
             return !not time yet
@@ -921,10 +1000,10 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
            if(do_rad_time_avg) then
 	         r_dt_rad_avg=real(dt_rad_avg)
 	         dt_rad_radians = (r_dt_rad_avg/day_in_s)*2.0*pi
-	         call diurnal_solar(rad_lat, rad_lon, gmt, time_since_ae, coszen, fracsun, rrsun, dt_rad_radians)
+	         call diurnal_solar(rad_lat, rad_lon, gmt, time_since_ae, coszen, fracsun, rrsun, dt_rad_radians, true_anom=true_anomaly, dec_out=dec_out, ang_out=ang_out)
            else
 	         ! Seasonal Cycle: Use astronomical parameters to calculate insolation
-	         call diurnal_solar(rad_lat, rad_lon, gmt, time_since_ae, coszen, fracsun, rrsun)
+	         call diurnal_solar(rad_lat, rad_lon, gmt, time_since_ae, coszen, fracsun, rrsun, true_anom=true_anomaly, dec_out=dec_out, ang_out=ang_out)
            end if
            
        endif
@@ -1078,7 +1157,23 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
             
             if (id_soc_spectral_olr > 0) then
                 spectral_olr_store = outputted_soc_spectral_olr
-            endif       
+            endif  
+                        
+            if (id_ang > 0) then
+                ang_out_store = ang_out
+            endif            
+            if (id_dec > 0) then
+                dec_out_store =  dec_out
+            endif        
+            if (id_rrsun > 0) then
+                rrsun_store = rrsun
+            endif
+            if (id_true_anom > 0) then
+                true_anomaly_store = true_anomaly
+            endif   
+            if (id_time_since_ae > 0) then
+                time_since_ae_store = time_since_ae
+            endif             
             
        endif
 
@@ -1131,6 +1226,23 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
         if(id_soc_spectral_olr > 0) then 
             used = send_data ( id_soc_spectral_olr, outputted_soc_spectral_olr, Time_diag)
         endif         
+           
+                    
+        if (id_ang > 0) then
+            used = send_data ( id_ang, ang_out, Time_diag)
+        endif            
+        if (id_dec > 0) then
+            used = send_data ( id_dec, dec_out, Time_diag)
+        endif          
+        if (id_rrsun > 0) then
+            used = send_data ( id_rrsun, rrsun, Time_diag)        
+        endif  
+        if (id_true_anom > 0) then
+            used = send_data ( id_true_anom, true_anomaly, Time_diag)
+        endif        
+        if (id_time_since_ae > 0) then
+            used = send_data ( id_time_since_ae, time_since_ae, Time_diag)
+        endif      
         ! Diagnostics sent 
 
 end subroutine run_socrates  
