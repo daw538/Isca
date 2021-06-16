@@ -56,7 +56,7 @@ MODULE socrates_interface_mod
   INTEGER :: id_soc_tdt_sw, id_soc_tdt_lw, id_soc_tdt_rad
   INTEGER :: id_soc_surf_flux_lw, id_soc_surf_flux_sw 
   INTEGER :: id_soc_surf_flux_lw_down, id_soc_surf_flux_sw_down 
-  INTEGER :: id_soc_flux_lw, id_soc_flux_sw
+  INTEGER :: id_soc_flux_lw, id_soc_flux_lw_up, id_soc_flux_lw_down, id_soc_flux_sw
   INTEGER :: id_soc_olr, id_soc_toa_sw
   INTEGER :: id_soc_toa_sw_down
   INTEGER :: id_soc_ozone, id_soc_co2, id_soc_coszen
@@ -74,7 +74,8 @@ MODULE socrates_interface_mod
 
   REAL :: dt_last !Time of last radiation calculation - used to tell whether it is time to recompute radiation or not
   REAL(r_def), allocatable, dimension(:,:,:) :: tdt_soc_sw_store, tdt_soc_lw_store
-  REAL(r_def), allocatable, dimension(:,:,:) :: thd_sw_flux_net_store, thd_lw_flux_net_store
+  REAL(r_def), allocatable, dimension(:,:,:) :: thd_sw_flux_net_store, thd_lw_flux_net_store, &
+  												thd_lw_flux_up_store, thd_lw_flux_down_store
   REAL(r_def), allocatable, dimension(:,:,:) :: thd_co2_store, thd_ozone_store 
   REAL(r_def), allocatable, dimension(:,:)   :: net_surf_sw_down_store, surf_lw_down_store, surf_lw_net_store, &
                                                 surf_sw_down_store, toa_sw_down_store, &
@@ -299,6 +300,16 @@ write(stdlog_unit, socrates_rad_nml)
          register_diag_field ( soc_mod_name, 'soc_flux_lw', (/axes(1),axes(2),axes(4)/), Time, &
          'socrates Net LW flux (up)', &
          'watts/m2', missing_value=missing_value               )
+         
+    id_soc_flux_lw_up = &
+         register_diag_field ( soc_mod_name, 'soc_flux_lw_up', (/axes(1),axes(2),axes(4)/), Time, &
+         'socrates Upwards LW flux', &
+         'watts/m2', missing_value=missing_value               )
+         
+    id_soc_flux_lw_down = &
+         register_diag_field ( soc_mod_name, 'soc_flux_lw_down', (/axes(1),axes(2),axes(4)/), Time, &
+         'socrates Downwards LW flux', &
+         'watts/m2', missing_value=missing_value               )
 
     id_soc_flux_sw = &
          register_diag_field ( soc_mod_name, 'soc_flux_sw', (/axes(1),axes(2),axes(4)/), Time, &
@@ -380,6 +391,14 @@ write(stdlog_unit, socrates_rad_nml)
 
         if (id_soc_flux_lw > 0) then 
             allocate(thd_lw_flux_net_store(size(lonb,1)-1, size(latb,2)-1, num_levels+1))
+        endif 
+        
+        if (id_soc_flux_lw_up > 0) then 
+            allocate(thd_lw_flux_up_store(size(lonb,1)-1, size(latb,2)-1, num_levels+1))
+        endif 
+        
+        if (id_soc_flux_lw_down > 0) then 
+            allocate(thd_lw_flux_down_store(size(lonb,1)-1, size(latb,2)-1, num_levels+1))
         endif 
 
         if (id_soc_flux_sw > 0) then 
@@ -785,7 +804,7 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
     real :: r_seconds, r_days, r_total_seconds, frac_of_day, frac_of_year, gmt, time_since_ae, rrsun, dt_rad_radians, day_in_s, r_solday, r_dt_rad_avg, dec_out, ang_out, true_anomaly
     real, dimension(size(temp_in,1), size(temp_in,2)) :: coszen, fracsun, surf_lw_net, olr, toa_sw, p2, toa_sw_down, surf_sw_down 
     real, dimension(size(temp_in,1), size(temp_in,2), size(temp_in,3)) :: ozone_in, co2_in
-    real, dimension(size(temp_in,1), size(temp_in,2), size(temp_in,3)+1) :: thd_sw_flux_net, thd_lw_flux_net
+    real, dimension(size(temp_in,1), size(temp_in,2), size(temp_in,3)+1) :: thd_sw_flux_net, thd_lw_flux_net, thd_lw_flux_up, thd_lw_flux_down
     type(time_type) :: Time_loc
 
     
@@ -814,6 +833,14 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
                 if (id_soc_flux_lw > 0) then 
                     thd_lw_flux_net = thd_lw_flux_net_store
                 endif 
+                
+                if (id_soc_flux_lw_up > 0) then 
+                    thd_lw_flux_up = thd_lw_flux_up_store
+                endif
+                
+                if (id_soc_flux_lw_down > 0) then 
+                    thd_lw_flux_down = thd_lw_flux_down_store
+                endif
                 
                 if (id_soc_flux_sw > 0) then 
                     thd_sw_flux_net = thd_sw_flux_net_store
@@ -872,6 +899,8 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
                 output_heating_rate_lw = 0.
                 thd_sw_flux_net = 0.
                 thd_lw_flux_net = 0.
+                thd_lw_flux_up = 0.
+                thd_lw_flux_down = 0.
                 net_surf_sw_down  = 0.
                 surf_lw_down  = 0.
                 surf_lw_net = 0.
@@ -924,6 +953,12 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
             endif
             if(id_soc_flux_lw > 0) then
                 used = send_data ( id_soc_flux_lw, thd_lw_flux_net, Time_diag)
+            endif
+            if(id_soc_flux_lw_up > 0) then
+                used = send_data ( id_soc_flux_lw_up, thd_lw_flux_up, Time_diag)
+            endif
+            if(id_soc_flux_lw_down > 0) then
+                used = send_data ( id_soc_flux_lw_down, thd_lw_flux_down, Time_diag)
             endif
             if(id_soc_flux_sw > 0) then
                 used = send_data ( id_soc_flux_sw, thd_sw_flux_net, Time_diag)
@@ -1076,6 +1111,8 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        surf_lw_net(:,:) = REAL(output_soc_flux_lw_up(:,:,n_layer+1) - output_soc_flux_lw_down(:,:, n_layer+1))
        olr(:,:) = REAL(output_soc_flux_lw_up(:,:,1))
        thd_lw_flux_net = REAL(output_soc_flux_lw_up - output_soc_flux_lw_down)
+       thd_lw_flux_up = REAL(output_soc_flux_lw_up)
+       thd_lw_flux_down = REAL(output_soc_flux_lw_down)
 
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_lw)
        
@@ -1112,6 +1149,14 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
 
             if (id_soc_flux_lw > 0) then 
                 thd_lw_flux_net_store = thd_lw_flux_net
+            endif 
+            
+            if (id_soc_flux_lw_up > 0) then 
+                thd_lw_flux_up_store = thd_lw_flux_up
+            endif 
+            
+            if (id_soc_flux_lw_down > 0) then 
+                thd_lw_flux_down_store = thd_lw_flux_down
             endif 
 
             if (id_soc_flux_sw > 0) then 
@@ -1198,6 +1243,12 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
         endif
         if(id_soc_flux_lw > 0) then
             used = send_data ( id_soc_flux_lw, thd_lw_flux_net, Time_diag)
+        endif
+        if(id_soc_flux_lw_up > 0) then
+            used = send_data ( id_soc_flux_lw_up, thd_lw_flux_up, Time_diag)
+        endif
+        if(id_soc_flux_lw_down > 0) then
+            used = send_data ( id_soc_flux_lw_down, thd_lw_flux_down, Time_diag)
         endif
         if(id_soc_surf_flux_lw_down > 0) then
             used = send_data ( id_soc_surf_flux_lw_down, surf_lw_down, Time_diag)
