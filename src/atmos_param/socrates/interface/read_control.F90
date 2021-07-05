@@ -95,7 +95,7 @@ control%l_mixing_ratio         = .TRUE.
 ! Gaseous absorption
 control%l_gas          = .TRUE.
 control%l_continuum    = .TRUE.
-!control%l_cont_gen     = .FALSE.
+control%l_cont_gen     = .TRUE.
 control%i_gas_overlap  = ip_overlap_k_eqv_scl
 
 ! Properties of clouds
