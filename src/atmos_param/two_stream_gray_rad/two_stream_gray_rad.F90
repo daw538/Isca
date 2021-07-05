@@ -162,7 +162,8 @@ namelist/two_stream_gray_rad_nml/ solar_constant, del_sol, &
 !-------------------- diagnostics fields -------------------------------
 
 integer :: id_olr, id_swdn_sfc, id_swdn_toa, id_net_lw_surf, id_lwdn_sfc, id_lwup_sfc, &
-           id_tdt_rad, id_tdt_solar, id_flux_rad, id_flux_lw, id_flux_sw, id_coszen, id_fracsun, &
+           id_tdt_rad, id_tdt_solar, id_flux_rad, id_flux_lw, id_flux_lw_up, id_flux_lw_down, & 
+           id_flux_sw, id_coszen, id_fracsun, &
            id_lw_dtrans, id_lw_dtrans_win, id_sw_dtrans, id_co2, &
            id_rrsun, id_dec, id_ang, id_true_anom, id_time_since_ae, & ! Orbital Diagnostics
            id_tau_lw, id_tau_sw ! Optical Depths
@@ -374,6 +375,15 @@ end select
         register_diag_field ( mod_name, 'flux_lw', axes(half), Time, &
                'Net longwave radiative flux (positive up)', &
                'W/m^2', missing_value=missing_value               )
+    id_flux_lw_up = &
+        register_diag_field ( mod_name, 'flux_lw_up', axes(half), Time, &
+               'Upwards longwave radiative flux', &
+               'W/m^2', missing_value=missing_value               )
+    id_flux_lw_down = &
+        register_diag_field ( mod_name, 'flux_lw_down', axes(half), Time, &
+               'Downwards longwave radiative flux', &
+               'W/m^2', missing_value=missing_value               )
+               
     id_flux_sw = &
         register_diag_field ( mod_name, 'flux_sw', axes(half), Time, &
                'Net shortwave radiative flux (positive up)', &
@@ -849,6 +859,12 @@ endif
 !------- longwave radiative flux (at half levels) --------
 if ( id_flux_lw > 0 ) then
    used = send_data ( id_flux_lw, lw_flux, Time_diag)
+endif
+if ( id_flux_lw_up > 0 ) then
+   used = send_data ( id_flux_lw_up, lw_up, Time_diag)
+endif
+if ( id_flux_lw_down > 0 ) then
+   used = send_data ( id_flux_lw_down, lw_down, Time_diag)
 endif
 if ( id_flux_sw > 0 ) then
    used = send_data ( id_flux_sw, sw_flux, Time_diag)
