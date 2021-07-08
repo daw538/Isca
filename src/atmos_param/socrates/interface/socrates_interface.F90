@@ -1101,6 +1101,20 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        albedo_soc = REAL(albedo_in, kind(r_def))
        z_full_soc = REAL(z_full_in, kind(r_def))
        z_half_soc = REAL(z_half_in, kind(r_def))
+       
+       ! File testing
+       open(69, file = '/scratch/dw569/z_full_levs.txt', status = 'old')
+       open(70, file = '/scratch/dw569/z_half_levs.txt', status = 'old') 
+       open(71, file = '/scratch/dw569/p_full_levs.txt', status = 'old') 
+       open(72, file = '/scratch/dw569/p_half_levs.txt', status = 'old') 
+       write(69,*) z_full_in(0,0,:)
+       write(70,*) z_half_in(0,0,:)
+       write(71,*) p_full_in(0,0,:)
+       write(72,*) p_half_in(0,0,:)
+       close(69) 
+       close(70) 
+       close(71) 
+       close(72) 
 
        CALL socrates_interface(Time, rad_lat_soc, rad_lon_soc, soc_lw_mode,  &
             tg_tmp_soc, q_soc, ozone_soc, co2_soc, t_surf_for_soc, p_full_soc, p_half_soc, z_full_soc, z_half_soc, albedo_soc, coszen, rrsun, n_profile, n_layer,     &
