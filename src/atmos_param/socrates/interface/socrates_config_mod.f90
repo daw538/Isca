@@ -61,6 +61,7 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
 
   integer   :: chunk_size = 16 !number of gridpoints to pass to socrates at a time
 
+  logical :: do_cia = .false. ! If true include effects of collision induced absorption
 
   ! Well mixed gas concentrations (kg / kg) #Don't know the source of these numbers. Need to check them. e.g. co mix ratio.
   REAL(r_def) :: co_mix_ratio = 0.0
@@ -129,7 +130,8 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
                              input_planet_emissivity, co2_ppmv, &
                              account_for_effect_of_water, account_for_effect_of_ozone, &
                              do_read_ozone, ozone_file_name, ozone_field_name, input_o3_file_is_mmr, &
-                             do_read_co2, co2_file_name, co2_field_name, input_co2_mmr, do_condensate_ch4, &                             
+                             do_read_co2, co2_file_name, co2_field_name, input_co2_mmr, &
+                             do_condensate_ch4, do_cia, &                             
                              solday, do_rad_time_avg, equinox_day,  &
                              store_intermediate_rad, dt_rad_avg, dt_rad, &
                              chunk_size, &
