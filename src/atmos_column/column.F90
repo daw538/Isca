@@ -37,6 +37,7 @@ character(len=128), parameter :: tagname = '$Name: isca_201811 $'
 
 integer :: id_ps, id_u, id_v, id_t
 integer :: id_pres_full, id_pres_half, id_zfull, id_zhalf
+integer :: id_sphum_vert_int
 integer, allocatable, dimension(:) :: id_tr
 character(len=8) :: mod_name = 'column'
 integer, dimension(4) :: axis_id
@@ -438,6 +439,9 @@ subroutine column_diagnostics_init(Time)
 
   id_zhalf   = register_diag_field(mod_name, &
         'height_half',  axes_3d_half,  Time, 'geopotential height at half model levels','m')
+        
+  id_sphum_vert_int   = register_diag_field(mod_name, &
+        'sphum_vert_int', (/id_lon,id_lat/),    Time, 'vertical column mass of specific humidity', 'kg/m2')
 
   allocate(id_tr(num_tracers))
   do ntr=1,num_tracers
@@ -461,6 +465,9 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
   
   real, dimension(is:ie, js:je, num_levels)    :: ln_p_full, p_full, z_full 
   real, dimension(is:ie, js:je, num_levels+1)  :: ln_p_half, p_half, z_half
+  real, dimension(is:ie, js:je, num_levels)  :: p_half_diff, ppress_sphum
+  real, dimension(is:ie, js:je)  :: vert_int_sphum
+  
   logical :: used
   integer :: ntr, i, j, k
   character(len=8) :: err_msg_1, err_msg_2
@@ -470,11 +477,11 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
   if(id_v   > 0)    used = send_data(id_v,   v_grid, Time)
   if(id_t   > 0)    used = send_data(id_t,   t_grid, Time)
   
-  if(id_zfull > 0 .or. id_zhalf > 0) then
+  !if(id_zfull > 0 .or. id_zhalf > 0) then
     call compute_pressures_and_heights(t_grid, p_surf, surf_geopotential, z_full, z_half, p_full, p_half)
-  else if(id_pres_half > 0 .or. id_pres_full > 0) then
-    call pressure_variables(p_half, ln_p_half, p_full, ln_p_full, p_surf)
-  endif
+  !else if(id_pres_half > 0 .or. id_pres_full > 0) then
+  !  call pressure_variables(p_half, ln_p_half, p_full, ln_p_full, p_surf)
+  !endif
   
   if(id_zfull > 0)   used = send_data(id_zfull,      z_full, Time)
   if(id_zhalf > 0)   used = send_data(id_zhalf,      z_half, Time)
@@ -490,6 +497,10 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
     if(id_tr(ntr) > 0) used = send_data(id_tr(ntr), tr_grid(:,:,:,time_level,ntr), Time)
   enddo
   
+  p_half_diff = p_half(:,:,1:num_levels) - p_half(:,:,2:num_levels+1)
+  ppress_sphum = grid_tracers(:,:,:,current,nhum) * p_half_diff
+  vert_int_sphum = -(1.0/grav) * sum(ppress_sphum, DIM=3)
+  if(id_sphum_vert_int > 0) used = send_data(id_sphum_vert_int,  vert_int_sphum, Time)
   
   if(interval_alarm(Time, Time_step, Alarm_time, Alarm_interval)) then
     call global_integrals(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_grid(:,:,:,time_level,:))
