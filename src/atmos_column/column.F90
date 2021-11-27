@@ -113,7 +113,7 @@ namelist /column_nml/ use_virtual_temperature, valid_range_t, &
                       enforce_col_rh, rh_prof_file_name, rh_prof_field_name
                       
 real, allocatable, dimension(:,:,:) :: rh_prof_inputs
-real, allocatable, dimension(:,:,:,:) :: enforced_rh ! (lat,lon,pfull,time)
+!real, allocatable, dimension(:,:,:,:) :: enforced_rh ! (lat,lon,pfull,time)
 
 
 contains 
@@ -202,6 +202,21 @@ subroutine column_init(Time, Time_step_in, tracer_attributes, dry_model_out, nhu
     dry_model_out = dry_model
     nhum_out = nhum
 
+    if (enforce_col_rh) then
+      if(file_exist(trim(rh_prof_file_name))) then
+        call error_mesg('column','Using RH profile specified by input file.', NOTE)
+        !call mpp_get_global_domain(grid_domain, xsize=global_num_lon, ysize=global_num_lat)
+        !call field_size(trim(rh_prof_file_name), trim(rh_prof_field_name), siz)
+
+      !if ( siz(1) == global_num_lon .or. siz(2) == global_num_lat ) then 
+        call read_data(trim(rh_prof_file_name), trim(rh_prof_field_name), rh_prof_inputs, grid_domain)
+      !    enforced_rh(:,:,:,1)  = rh_prof_inputs
+
+      else
+        call error_mesg('column','Enforced RH input profile called' // &
+                     ' but '//trim(rh_prof_file_name)//' does not exist', FATAL)
+      endif
+    endif
 
     call read_restart_or_do_coldstart(tracer_attributes)
 
@@ -219,31 +234,6 @@ subroutine column_init(Time, Time_step_in, tracer_attributes, dry_model_out, nhu
     call get_time(Time_step, seconds, days)
     dt_real = 86400*days + seconds
     
-    if (enforce_col_rh) then
-      if(file_exist(trim(rh_prof_file_name))) then
-        call error_mesg('column','Using RH profile specified by input file.', NOTE)
-        !call mpp_get_global_domain(grid_domain, xsize=global_num_lon, ysize=global_num_lat)
-        !call field_size(trim(rh_prof_file_name), trim(rh_prof_field_name), siz)
-
-      !if ( siz(1) == global_num_lon .or. siz(2) == global_num_lat ) then
-        call read_data(trim(rh_prof_file_name), trim(rh_prof_file_name), rh_prof_inputs, grid_domain)
-      !    where(land)
-      !    enforced_rh(:,:,:,1)  = rh_prof_inputs
-
-      !else
-      !  write(ctmp1(1: 4),'(i4)') siz(1)
-      !  write(ctmp1(9:12),'(i4)') siz(2)
-      !  write(ctmp2(1: 4),'(i4)') global_num_lon
-      !  write(ctmp2(9:12),'(i4)') global_num_lat
-      !  call error_mesg ('column','RH input profile file contains data on a '// &
-      !         ctmp1//' grid, but atmos model grid is '//ctmp2, FATAL)
-      
-
-      else
-        call error_mesg('column','Enforced RH input profile called' // &
-                     ' but '//trim(rh_prof_file_name)//' does not exist', FATAL)
-      endif
-    endif
 
     module_is_initialized = .true.
     ! NTL: CHECK AGAINST spectral_dynamics_init TO SEE WHAT ELSE NEEDS TO BE INITIALISED 
@@ -308,8 +298,9 @@ endif
 
 call leapfrog_3d_real(tg, dt_tg, previous, current, future, delta_t, robert_coeff, raw_filter_coeff)
 
-
-
+if (enforce_col_rh) then
+  call LOOKUP_ES(tg(:,:,:,current), enforced_es)
+endif
 
 if(minval(tg(:,:,:,future)) < valid_range_t(1) .or. maxval(tg(:,:,:,future)) > valid_range_t(2)) then
   pe_is_valid = .false.
@@ -384,7 +375,7 @@ do ntr = 1, num_tracers
 enddo 
 
 if (enforce_col_rh) then
-  call LOOKUP_ES(tg(:,:,:,current), enforced_es)
+  !call LOOKUP_ES(tg(:,:,:,current), enforced_es)
   enforced_e = enforced_es * rh_prof_inputs
   grid_tracers(:,:,:,current,nhum) = (enforced_e * (rdgas/rvgas))/(p_full + ((rdgas/rvgas) - 1)*enforced_e)   
   !grid_tracers(:,:,:,current,nhum) = enforced_q
@@ -458,12 +449,10 @@ subroutine column_diagnostics_init(Time)
   id_pk = register_static_field(mod_name, 'pk', (/id_phalf/), 'vertical coordinate pressure values', 'pascals')
   id_bk = register_static_field(mod_name, 'bk', (/id_phalf/), 'vertical coordinate sigma values', 'none')
   id_zsurf = register_static_field(mod_name, 'zsurf', (/id_lon,id_lat/), 'geopotential height at the surface', 'm')
-  id_enforced_rh = register_static_field(mod_name, 'enforced_rh', (/id_phalf/), 'enforced relative humidity profile', 'percent')
-  
+
   if(id_pk    > 0) used = send_data(id_pk, pk, Time)
   if(id_bk    > 0) used = send_data(id_bk, bk, Time)
   if(id_zsurf > 0) used = send_data(id_zsurf, surf_geopotential/grav, Time)
-  if(id_enforced_rh > 0) used = send_data(id_enforced_rh, rh_prof_inputs(1,1,:), Time)
 
   id_ps  = register_diag_field(mod_name, &
         'ps', (/id_lon,id_lat/),       Time, 'surface pressure',             'pascals')
@@ -491,6 +480,9 @@ subroutine column_diagnostics_init(Time)
         
   id_sphum_vert_int   = register_diag_field(mod_name, &
         'sphum_vert_int', (/id_lon,id_lat/),    Time, 'vertical column mass of specific humidity', 'kg/m2')
+        
+  id_enforced_rh   = register_diag_field(mod_name, &
+        'enforced_rh', axes_3d_full,    Time, 'enforced relative humidity profile', 'percent')
 
 
   allocate(id_tr(num_tracers))
@@ -547,10 +539,13 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
     if(id_tr(ntr) > 0) used = send_data(id_tr(ntr), tr_grid(:,:,:,time_level,ntr), Time)
   enddo
   
-  p_half_diff = p_half(:,:,1:num_levels) - p_half(:,:,2:num_levels+1)
-  ppress_sphum = grid_tracers(:,:,:,current,nhum) * p_half_diff
-  vert_int_sphum = -(1.0/grav) * sum(ppress_sphum, DIM=3)
+  !p_half_diff = p_half(:,:,1:num_levels) - p_half(:,:,2:num_levels+1)
+  !ppress_sphum = grid_tracers(:,:,:,current,nhum) * p_half_diff
+  !vert_int_sphum = -(1.0/grav) * sum(ppress_sphum, DIM=3)
+  call tracer_vertical_integral(p_half, grid_tracers, nhum, vert_int_sphum)
   if(id_sphum_vert_int > 0) used = send_data(id_sphum_vert_int,  vert_int_sphum, Time)
+  
+  if(id_enforced_rh > 0) used = send_data(id_enforced_rh,  100.0*rh_prof_inputs, Time)
   
   if(interval_alarm(Time, Time_step, Alarm_time, Alarm_interval)) then
     call global_integrals(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_grid(:,:,:,time_level,:))
@@ -590,7 +585,7 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
     deallocate(pk, bk)
     deallocate(surf_geopotential)
     deallocate(grid_tracers)
-    deallocate(enforced_rh)
+    !deallocate(enforced_rh)
     
     call column_diagnostics_end
     call press_and_geopot_end
@@ -671,7 +666,7 @@ subroutine allocate_fields
     allocate (grid_tracers(is:ie, js:je, num_levels, num_time_levels, num_tracers))
     
     allocate (rh_prof_inputs (is:ie, js:je, num_levels)) ; rh_prof_inputs=0.
-    allocate (enforced_rh (is:ie, js:je, num_levels, num_time_levels)) ; enforced_rh=0.
+    !allocate (enforced_rh (is:ie, js:je, num_levels, num_time_levels)) ; enforced_rh=0.
     
     ! Filling allocatable arrays with zeros immediately after allocation facilitates code debugging
     psg=0.; ug=0.; vg=0.; tg=0.
@@ -846,6 +841,21 @@ subroutine get_initial_fields(ug_out, vg_out, tg_out, psg_out, grid_tracers_out)
   end subroutine leapfrog_3d_real 
   
 
+subroutine tracer_vertical_integral(p_half, grid_tracers, nhum, vert_int_sphum)
+  ! This subroutine calculates the vertical integral of the tracer field, as
+  ! defined by the equation  W = -1/g sum(q_{v,i} * delta_p,i)
+  integer, intent(in) :: nhum
+  real, intent(in), dimension(is:, js:, :) :: p_half
+  real, intent(in), dimension(is:, js:, :, :, :) :: grid_tracers
+  real, intent(out), dimension(is:ie, js:je) :: vert_int_sphum
+  
+  real, dimension(is:ie, js:je, num_levels)  :: p_half_diff, ppress_sphum
 
+  p_half_diff = p_half(:,:,1:num_levels) - p_half(:,:,2:num_levels+1)
+  ppress_sphum = grid_tracers(:,:,:,current,nhum) * p_half_diff
+  vert_int_sphum = -(1.0/grav) * sum(ppress_sphum, DIM=3)
+
+  return
+end subroutine tracer_vertical_integral
 
 end module column_mod
