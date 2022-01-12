@@ -17,9 +17,12 @@ USE def_dimen,    ONLY: StrDim
 USE def_control,  ONLY: StrCtrl
 USE def_aer,      ONLY: StrAer, allocate_aer, allocate_aer_prsc
 use soc_constants_mod,   only: i_def, r_def
+USE socrates_config_mod, only: haze_mix_ratio
 
 IMPLICIT NONE
 
+! Local variables.
+INTEGER :: i, l, i_aer
 
 ! Control options:
 TYPE(StrCtrl),      INTENT(IN)  :: control
@@ -35,11 +38,19 @@ TYPE(StrAer),       INTENT(OUT) :: aer
 
 INTEGER(i_def), INTENT(IN) :: n_profile
 !   Number of atmospheric profiles for radiation calculations
-
+!INTEGER(i_def), INTENT(IN) :: n_layer
+!   Number of atmospheric layers for radiation calculations
 
 ! Allocate structure for the core radiation code interface
 CALL allocate_aer(aer, dimen, spectrum)
 CALL allocate_aer_prsc(aer, dimen, spectrum)
+
+aer%mr_source = ip_aersrc_classic_ron
+
+DO i=1, Spectrum%Aerosol%n_aerosol
+  aer%mr_type_index(i) = i
+  aer%mix_ratio(:,:,i) = haze_mix_ratio
+END DO
 
 END SUBROUTINE set_aer
 END MODULE set_aer_mod
