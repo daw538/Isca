@@ -63,13 +63,13 @@ module qe_moist_convection_mod
   !-----------------------------------------------------------------------
   !   --- parameters and defaults (overriden in namelist) ----
 
-  real    :: tau_bm  = 7200.
-  real    :: rhbm    = .8
-  real    :: Tmin    = 173. ! minimum
-  real    :: Tmax    = 335. ! and maximum temperature at LCL
+  real    :: tau_bm  = 7200.0
+  real    :: rhbm    = 0.8
+  real    :: Tmin    = 173.0 ! minimum
+  real    :: Tmax    = 335.0 ! and maximum temperature at LCL
   real    :: val_inc = 0.01
-  real    :: val_min = -1.  ! calculated in get_lcl_temp_table_size
-  real    :: val_max = 1.   ! calculated in get_lcl_temp_table_size
+  real    :: val_min = -1.0  ! calculated in get_lcl_temp_table_size
+  real    :: val_max = 1.0   ! calculated in get_lcl_temp_table_size
 
   real, parameter  :: small = 1.e-10, &  ! to avoid division by 0 in dry limit
                       pref  = 1.e5
@@ -141,6 +141,13 @@ contains
     ! Generate the lcl_temp_table
     allocate (lcl_temp_table(lcl_temp_table_size))
     call generate_lcl_table(lcl_temp_table)
+    
+    !open(37, file="sbmtsurf.txt", status="new")
+    !write(37, *) 'c_p = ', cp_air
+    !write(37, *) 'L_v = ', hlv
+    !write(37, *) 'R_v = ', rvgas
+    !write(37, *) 'Tinsurf    T0    es    rs'
+    !close(37)    
        
   end subroutine qe_moist_convection_init
 
@@ -160,6 +167,8 @@ contains
     
     real      :: esmin, esmax
     
+    !write(6,*) 'SBM L163 Tmin: ', Tmin 
+    !write(6,*) 'SBM L164 Tmin: ', Tmax
     call escomp(Tmin, esmin)
     call escomp(Tmax, esmax)
     
@@ -434,10 +443,22 @@ contains
     T0 = Tin(k_surface)
     r0 = rin(k_surface)
     
+    !if (T0 .lt. 70.0) then
+    !  write(6,*) 'SBM T0: ', T0
+    !else
+    !  write(6,*) 'SBM T0: ', T0
+    !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+    !endif      
+    !write(6,*) 'SBM L437 T0: ', T0
     call escomp(T0,es)
     
     ! Calculates the saturated mixing ratio at the surface
     rs = mixing_ratio(es, p_full(k_surface))
+    
+    !open(37, file="sbmtsurf.txt", position="append", status="old")
+    !write(37, *) tp(k_surface)
+    !write(37, *) Tin(k_surface), T0, es ,rs
+    !close(37)
     
     ! Is the lowest level saturated or oversaturated?
     if (r0 .ge. rs) then
@@ -494,13 +515,35 @@ contains
        ! Saturate parcel (wring out excess moisture and change temperature 
        ! correspondinly; the following is the resulting first-order
        ! change in temperature)
+       !Tp(k_surface) = T0 + (r0-rs) / (Cp_air/(HLv+small))     
        Tp(k_surface) =       & 
             T0 + (r0-rs) / ( (Cp_air/(HLv+small)) + (HLv*rs)/rvgas/T0**2 )
+       !Tp(k_surface) =       & 
+       !     Tp(k_surface) + (r0-rs) / ( (Cp_air/(HLv+small)) + (HLv*rs)/rvgas/Tp(k_surface)**2 )
+           
+       !if (Tp(k_surface) .lt. 70.0) then
+       !write(6,*) 'SBM sat Tsurf: ', Tp(k_surface)
+       !integer :: u
+       !open(37, file="sbmtsurf.txt", position="append", status="old")
+       !write(37, *) tp(k_surface)
+       !write(37, *) tp(k_surface), T0, r0 ,rs
+       !37 format(f5.2,2x,f5.2,2x,f5.2,2x,f5.2)
+       !close(37)
+       !else
+       !  write(6,*) 'SBM Tsurf: ', Tp(k_surface)
+       !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+       !endif    
+       !write(6,*) 'SBM L499 Tp(k_surface): ', Tp(k_surface)
        call escomp(Tp(k_surface), es)
        rp(k_surface) = mixing_ratio(es, p_full(k_surface))
     else
+       !open(38, file="sbmtsurf.txt", position="append", status="old")
+       !write(38, *) -1.0, T0, r0, rs
+       !38 format(f5.2,2x,f5.2,2x,f5.2,2x,f5.2)
+       !close(38)
        ! If the lowest level is not saturated, calculate temperature of saturation
        theta0 = Tin(k_surface) * (pref/p_full(k_surface))**kappa
+       !write(6,*) 'SBM Tsat (issat): ', theta0
        
        if (r0 .le. 0) then
           ! If the mixing ratio r0 <= 0, LCL is the top of model
@@ -509,7 +552,7 @@ contains
           skip = .true.
        else
           ! If the mixing ratio r0 > 0, calculate LCL temperature and temperature
-          value = log( theta0**(-1/kappa) * pref*r0 / (rdgas/rvgas + r0) )
+          value = log( theta0**(-1./kappa) * pref*r0 / (rdgas/rvgas + r0) )
           
           call get_lcl_temp(lcl_temp_table, value, val_min, val_max, TLCL)
           pLCL = pref * (TLCL/theta0)**(1./kappa)
@@ -525,6 +568,14 @@ contains
           CIN = 0.
           do while (p_full(k) .gt. pLCL)
              Tp(k) = theta0 * (p_full(k)/pref)**kappa
+             
+             !if (Tp(k) .lt. 70.0) then
+             !  write(6,*) 'SBM Tk: ', Tp(k)
+             !else
+             !  write(6,*) 'SBM Tk: ', Tp(k)
+             !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+             !endif
+             !write(6,*) 'SBM L528 Tp(k1): ', Tp(k)
              call escomp(Tp(k), es)
              
              ! rp is not the actual mixing ratio but will be used
@@ -552,6 +603,13 @@ contains
                      Tp, rp, pLZB, kLZB, kLFC, CIN )
              end if
           else
+             !if (Tp(kLCL) .lt. 70.0) then
+             !  write(6,*) 'SBM TkLCL: ', Tp(kLCL)
+             !else
+             !  write(6,*) 'SBM TkLCL: ', Tp(kLCL)
+             !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+             !endif             !write(6,*) 'SBM Tp_LCL: ', Tp(kLCL)
+             !write(6,*) 'SBM L555 Tp(kLCL1): ', Tp(kLCL)
              call escomp(Tp(kLCL),es)
              rp(kLCL) = mixing_ratio(es, (p_full(kLCL) + pLCL)/2)
              a = kappa * Tp(kLCL) + (HLv/Cp_air) * rp(kLCL)
@@ -566,6 +624,13 @@ contains
                         Tp, rp, pLZB, kLZB, kLFC, CIN )
                 end if
              else
+                !if (Tp(kLCL) .lt. 70.0) then
+                !  write(6,*) 'SBM TkLCL: ', Tp(kLCL)
+                !else
+                !  write(6,*) 'SBM TkLCL: ', Tp(kLCL)
+                !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+                !endif             !write(6,*) 'SBM Tp_LCL: ', Tp(kLCL)                !write(6,*) 'SBM Tp_LCL cape: ', Tp(kLCL)
+                !write(6,*) 'SBM L569 Tp(kLCL2): ', Tp(kLCL)
                 call escomp(Tp(kLCL), es)
                 rp(kLCL) = mixing_ratio(es, p_full(kLCL))
                 
@@ -633,6 +698,13 @@ contains
              ! Exit the loop over k
              go to 20
           else
+             !if (Tp(k) .lt. 70.0) then
+             !  write(6,*) 'SBM Tk: ', Tp(k)
+             !else
+             !  write(6,*) 'SBM Tk: ', Tp(k)
+             !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+             !endif             !write(6,*) 'SBM Tp_LCL: ', Tp(kLCL)          
+             !write(6,*) 'SBM L636 Tp(k2): ', Tp(k)
              call escomp(Tp(k), es)
              rp(k) = mixing_ratio(es, ( p_full(k) + p_full(k+1) )/2)
              a = kappa * Tp(k) + (HLv/Cp_air)* rp(k)
@@ -648,6 +720,13 @@ contains
                 ! Exit the loop over k
                 go to 20
              else
+                !if (Tp(k) .lt. 70.0) then
+                !  write(6,*) 'SBM Tk: ', Tp(k)
+                !else
+                !  write(6,*) 'SBM Tk: ', Tp(k)
+                !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+                !endif             !write(6,*) 'SBM Tp_LCL: ', Tp(kLCL)  
+                !write(6,*) 'SBM L651 Tp(k3): ', Tp(k)           
                 call escomp(Tp(k), es)
                 rp(k) = mixing_ratio(es, p_full(k))
                 
@@ -686,8 +765,11 @@ contains
     ! calculates the mixing ratio from the vapor pressure and pressure
     
     real, intent(in)     :: vapor_pressure, pressure
-    
-    mixing_ratio = rdgas * vapor_pressure/rvgas/(pressure-vapor_pressure)
+!#ifdef COLUMN_MODEL 
+!    mixing_ratio = (rdgas/rvgas) * vapor_pressure/(pressure)
+!#else
+    mixing_ratio = (rdgas/rvgas) * vapor_pressure/(pressure-vapor_pressure)
+!#endif
     
   end function mixing_ratio
   
@@ -705,6 +787,7 @@ contains
     
     q            = r / (1.0 + r)
     virtual_temp = temp * (1.0 + q * (rvgas/rdgas-1.0))
+    !virtual_temp = temp * (1.0 + (q-q**2+q**3-q**4) * (rvgas/rdgas-1.0))
     
   end function virtual_temp
   
@@ -1085,7 +1168,7 @@ contains
     
     real, intent(in)      :: value, lcl_temp_guess
     real, parameter       :: precision = 1.e-6
-    integer, parameter    :: max_iter = 200
+    integer, parameter    :: max_iter = 6
     real                  :: T, dT
     integer               :: iter 
     
@@ -1140,8 +1223,9 @@ contains
        T    = T - dT
        iter = iter + 1
     end do
+    !write(6,*) 'iterations taken: ', iter
     
-    if (dT .lt. precision) then
+    if (abs(dT) .lt. precision) then
        lcl_temp = T
     else
        write(*,*) 'qe_moist_convection: LCL calculation did not converge. Precision not achieved.'
@@ -1157,8 +1241,15 @@ contains
     real, intent(in)      :: T, value   
     real                  :: es
     
+    !if (T .lt. 70.0) then
+    !write(6,*) 'SBM lcl_val_diff: ', T
+    !else
+    !  write(6,*) 'SBM Tk: ', T
+    !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+    !endif             !write(6,*) 'SBM Tp_LCL: ', Tp(kLCL)      
+    !write(6,*) 'SBM L1160 T: ', T
     call escomp(T, es)
-    lcl_value_difference = value - log(es * T**(-1/kappa))
+    lcl_value_difference = value - log(es * T**(-1./kappa))
     
   end function lcl_value_difference
 
@@ -1169,7 +1260,7 @@ contains
     real, intent(in)       :: T
     
     ! Derivative of the function lcl_value_difference
-    dlcl_value_difference = 1/kappa * T**(-1) - HLv/rvgas * T**(-2)
+    dlcl_value_difference = 1./kappa * T**(-1.) - HLv/rvgas * T**(-2.)
     
   end function dlcl_value_difference
   

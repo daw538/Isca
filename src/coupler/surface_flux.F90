@@ -401,8 +401,16 @@ subroutine surface_flux_1d (                                           &
   if (do_init) call surface_flux_init
 
   !---- use local value of surf temp ----
-
+  
   t_surf0 = 200.   !  avoids out-of-bounds in es lookup
+  
+  !write(6,*) 'SFLX input t_atm:', t_atm
+  !write(6,*) 'SFLX input q_atm_in:', q_atm_in
+  !write(6,*) 'SFLX Land used with t_ca', t_ca
+  !write(6,*) 'SFLX Elsewhere used with t_surf', t_surf
+  !!write(6,*) 'SFLX t_surf0', t_surf0
+  !!write(6,*) 'SFLX del_temp', del_temp
+  
   where (avail)
      where (land)
         t_surf0 = t_ca
@@ -412,7 +420,22 @@ subroutine surface_flux_1d (                                           &
   endwhere
 
   t_surf1 = t_surf0 + del_temp
-
+  
+  !!write(6,*) size(t_surf0,1)
+  !if (t_surf0(1) .lt. 70.0) then
+  !  !write(6,*) 'SF tsurf0: ', t_surf0(1)
+  !else
+  !  !write(6,*) 'SF tsurf0: ', t_surf0(1)
+  !  call error_mesg ('error_finding', 'This is not the error you are looking for', FATAL)
+  !endif
+  !if (t_surf1(1) .lt. 70.0) then
+  !  !write(6,*) 'SF tsurf1: ', t_surf1(1)
+  !else
+  !  !write(6,*) 'SF tsurf1: ', t_surf1(1)
+  !  !write(6,*) 'This is not the error you are looking for'
+  !endif
+  !write(6,*) 'SFLX L416 t_surf0: ', t_surf0
+  !write(6,*) 'SFLX L417 t_surf1: ', t_surf1
   call escomp ( t_surf0, e_sat  )  ! saturation vapor pressure
   call escomp ( t_surf1, e_sat1 )  ! perturbed  vapor pressure
 
@@ -542,6 +565,7 @@ subroutine surface_flux_1d (                                           &
       where (avail) &
            q_2m = q_surf + (q_atm - q_surf) * ex_del_q
 
+      !!write(6,*) 'SFLX L545 temp_2m: ', temp_2m
       call escomp ( temp_2m, e_sat_2m )
 
       if(use_mixing_ratio) then

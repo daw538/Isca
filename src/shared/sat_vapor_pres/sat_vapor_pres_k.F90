@@ -1368,6 +1368,7 @@
 
    nbad = 0
    do i = 1, size(temp,1)
+     !write(6,*) 'SVAP Final temperatures: ', temp, i, size(temp)
      tmp = temp(i)-tminl
      ind = int(dtinvl*(tmp+tepsl))
      if (ind < 0 .or. ind >= table_siz)  then
@@ -1406,11 +1407,13 @@
  real    :: tmp, del
  integer :: ind
 
+   !write(6,*) 'SV0d T: ', temp
    nbad = 0
    tmp = temp-tminl
    ind = int(dtinvl*(tmp+tepsl))
    if (ind < 0 .or. ind >= table_siz)  then
      nbad = nbad+1
+     !write(6,*) 'Final temperatures: ', temp
    else
      del = tmp-dtres*real(ind)
      esat = TABLE(ind+1) + del*(DTABLE(ind+1) + del*D2TABLE(ind+1))

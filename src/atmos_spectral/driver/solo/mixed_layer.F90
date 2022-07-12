@@ -282,7 +282,7 @@ allocate(beta_q                  (is:ie, js:je))
 allocate(beta_lw                 (is:ie, js:je))
 allocate(delta_t_surf            (is:ie, js:je))
 allocate(eff_heat_capacity       (is:ie, js:je))
-allocate(corrected_flux          (is:ie, js:je))
+allocate(corrected_flux          (is:ie, js:je)); corrected_flux = 0.0
 allocate(t_surf_dependence       (is:ie, js:je))
 allocate (albedo_initial         (is:ie, js:je))
 allocate(land_sea_heat_capacity  (is:ie, js:je))
@@ -342,8 +342,8 @@ else if( do_read_sst ) then !s Added so that if we are reading sst values then w
 
 elseif (prescribe_initial_dist) then
 !  call error_mesg('mixed_layer','mixed_layer restart file not found - initializing from prescribed distribution', WARNING)
-
     t_surf(:,:) = tconst - delta_T*((3.*sin(rad_lat_2d)**2.)-1.)/3.
+    !write(6,*) 'MXLR init t_surf', t_surf
 
 else
 
@@ -632,6 +632,13 @@ endif
 gamma_t = 1.0 / (1.0 - Tri_surf%dtmass * (Tri_surf%dflux_t + dhdt_atm * inv_cp_air))
 gamma_q = 1.0 / (1.0 - Tri_surf%dtmass * (Tri_surf%dflux_tr(:,:,nhum) + dedq_atm))
 
+!write(6,*) 'MXLR gamma_t', gamma_t
+!write(6,*) 'MXLR Tri_surf', Tri_surf
+!write(6,*) 'MXLR delta_t', delta_t
+!!write(6,*) 'MXLR dtmass', dtmass
+!write(6,*) 'MXLR flux_t', flux_t
+!write(6,*) 'MXLR Tri_surf%delta_t', Tri_surf%delta_t
+!write(6,*) 'MXLR Tri_surf%dtmass', Tri_surf%dtmass
 fn_t = gamma_t * (Tri_surf%delta_t + Tri_surf%dtmass * flux_t * inv_cp_air)
 fn_q = gamma_q * (Tri_surf%delta_tr(:,:,nhum) + Tri_surf%dtmass * flux_q_total)
 
@@ -642,6 +649,11 @@ en_q = gamma_q * Tri_surf%dtmass * dedt_surf
 ! Note flux_sw doesn't depend on surface or lowest layer values
 ! Note drdt_atm is not used - should be fixed
 !
+!write(6,*) 'MXLR flux_t', flux_t
+!write(6,*) 'MXLR inv_cp_air', inv_cp_air
+!write(6,*) 'MXLR dhdt_atm', dhdt_atm
+!write(6,*) 'MXLR inv_cp_air', inv_cp_air
+!write(6,*) 'MXLR fn_t', fn_t
 alpha_t = flux_t * inv_cp_air + dhdt_atm * inv_cp_air * fn_t
 alpha_q = flux_q_total + dedq_atm * fn_q
 alpha_lw = flux_r
@@ -663,10 +675,19 @@ endif
 !
 ! Implement mixed layer surface boundary condition
 !
+!write(6,*) 'MXLR net_surf_sw_down', net_surf_sw_down
+!write(6,*) 'MXLR surf_lw_down', surf_lw_down
+!write(6,*) 'MXLR alpha_t', alpha_t
+!write(6,*) 'MXLR CP_AIR', CP_AIR
+!write(6,*) 'MXLR alpha_lw', alpha_lw
+!write(6,*) 'MXLR ocean_qflux', ocean_qflux
 corrected_flux = - net_surf_sw_down - surf_lw_down + alpha_t * CP_AIR + alpha_lw - ocean_qflux
 t_surf_dependence = beta_t * CP_AIR + beta_lw
 
 if (evaporation) then
+  !write(6,*) 'MXLR corrected_flux', corrected_flux
+  !write(6,*) 'MXLR alpha_q', alpha_q  
+  !write(6,*) 'MXLR HLV', HLV
   corrected_flux = corrected_flux + alpha_q * HLV
   t_surf_dependence = t_surf_dependence + beta_q * HLV
 endif
@@ -700,11 +721,11 @@ if (do_ape_sst) then
         if ( (rad_lat_2d(1,j) .gt. -PI/3.) .and. (rad_lat_2d(1,j) .lt. PI/3.) ) then 
             ! between 60N-60S
             sst_new(:,j) = KELVIN+( 27.0*( 1. - (sin( 3./2. * rad_lat_2d(:,j) )**2 ) ))  
-            !write(6,*) 'SST profile', rad_lat_2d(1,j)*180/PI, ' j:', j, ' sst:', sst_new(1,j)
+            !!write(6,*) 'SST profile', rad_lat_2d(1,j)*180/PI, ' j:', j, ' sst:', sst_new(1,j)
         else
             ! from 60N/S to pole
             sst_new(:,j) = KELVIN
-            !write(6,*) 'SST is zero', rad_lat_2d(1,j)*180/PI, ' j:', j, ' sst:', sst_new(1,j)
+            !!write(6,*) 'SST is zero', rad_lat_2d(1,j)*180/PI, ' j:', j, ' sst:', sst_new(1,j)
         endif
     enddo
     delta_t_surf = sst_new - t_surf
@@ -728,8 +749,14 @@ if (do_calc_eff_heat_cap) then
         where (land_ice_mask) delta_t_surf = - corrected_flux  * dt / eff_heat_capacity
         where (land_ice_mask) t_surf = t_surf + delta_t_surf             
     else
+        !write(6,*) 'MXLR corrected_flux', corrected_flux
+        !write(6,*) 'MXLR dt', dt
+        !write(6,*) 'MXLR eff_heat_capacity', corrected_flux
         delta_t_surf = - corrected_flux  * dt / eff_heat_capacity
+        !write(6,*) 'MXLR do_calc_eff_heat_cap old t_surf', t_surf
         t_surf = t_surf + delta_t_surf
+        !write(6,*) 'MXLR do_calc_eff_heat_cap delta_t_surf', delta_t_surf
+        !write(6,*) 'MXLR do_calc_eff_heat_cap new t_surf', t_surf
     endif
 
 endif !s end of if(do_sc_sst).
@@ -744,6 +771,7 @@ if (evaporation) Tri_surf%delta_tr(:,:,nhum) = fn_q + en_q * delta_t_surf
 ! Note:
 ! When using an implicit step there is not a clearly defined flux for a given timestep
 ! We have taken a time-step, send the values at the next time level.
+
 if(id_t_surf > 0) used = send_data(id_t_surf, t_surf, Time_next)
 if(id_flux_t > 0) used = send_data(id_flux_t, flux_t, Time_next)
 if(id_flux_lhe > 0) used = send_data(id_flux_lhe, HLV * flux_q_total, Time_next)

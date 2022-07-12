@@ -399,6 +399,8 @@ vg_final  =  vg(:,:,:,previous)
 tg_final  =  tg(:,:,:,current)
 grid_tracers_final(:,:,:,time_level_out,:) = grid_tracers(:,:,:,current,:)
 
+write(6,*) '**** Completed timestep ****'
+
 return 
 end subroutine column 
 
@@ -613,13 +615,17 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
     character(len=4), dimension(12) :: month_name
     
     real, dimension(is:ie, js:je, num_levels) :: speed
-    real :: max_speed, avgT
+    real :: max_speed, avgT, minT, maxT
     
     month_name=(/' Jan',' Feb',' Mar',' Apr',' May',' Jun',' Jul',' Aug',' Sep',' Oct',' Nov',' Dec'/)
     
     speed = sqrt(u_grid*u_grid + v_grid*v_grid)
     max_speed = maxval(speed)
+    minT = minval(t_grid(:,:,:))
+    maxT = maxval(t_grid(:,:,:))
     call mpp_max(max_speed)
+    call mpp_max(minT)
+    call mpp_max(maxT)
     
     avgT = area_weighted_global_mean(t_grid(:,:, num_levels))
     
@@ -627,14 +633,14 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
       if(get_calendar_type() == NO_CALENDAR) then
         call get_time(Time, seconds, days)
         if (json_logging) then
-          write(*, 300) days, seconds, max_speed, avgT
+          write(*, 300) days, minT, maxT
         else
           write(*,100) days, seconds
         end if
       else
         call get_date(Time, year, month, days, hours, minutes, seconds)
         if (json_logging) then
-          write(*,400) year, month, days, hours, minutes, seconds, max_speed, avgT
+          write(*,400) year, month, days, hours, minutes, seconds, max_speed, maxT
         else
           write(*,200) year, month_name(month), days, hours, minutes, seconds
         end if
@@ -642,8 +648,9 @@ subroutine column_diagnostics(Time, p_surf, u_grid, v_grid, t_grid, wg_full, tr_
     endif
     100 format(' Integration completed through',i6,' days',i6,' seconds')
     200 format(' Integration completed through',i5,a4,i3,2x,i2,':',i2,':',i2)
-    300 format(1x, '{"day":',i6,2x,',"second":', i6, &
-        2x,',"max_speed":',e13.6,3x,',"avg_T":',e13.6, 3x '}')
+    !300 format(1x, '{"day":',i6,2x,',"second":', i6, &
+    !    2x,',"max_speed":',e13.6,3x,',"avg_T":',e13.6, 3x '}')
+    300 format(' ',i6,'d, Tmin:',f6.1,1x,', Tmax:',f6.1)
     400 format(1x, '{"date": "',i0.4,'-',i0.2,'-',i0.2, &
       '", "time": "', i0.2,':', i0.2,':', i0.2, '", "max_speed":',f6.1,3x,',"avg_T":',f6.1, 3x '}')
     

@@ -1349,6 +1349,7 @@ if(bucket) then
 
    ! bucket time tendency
    dt_bucket = depth_change_cond + depth_change_conv - depth_change_lh
+   !write(6,*) 'IMPHYS dt_bucket', dt_bucket
    !change in bucket depth in one leapfrog timestep [m]        
    
    !diffuse_surf_water transforms dt_bucket to spherical, diffuses water, and transforms back
@@ -1446,6 +1447,7 @@ subroutine rh_calc(pfull,T,qv,RH) !s subroutine copied from 2006 FMS MoistModel 
 
         !calculate water saturated vapor pressure from table
         !and store temporarily in the variable esat
+        !write(6,*) 'IMPHYS L1367 T: ', T
         CALL LOOKUP_ES(T,esat)						!same as escomp
 
         !calculate denominator in qsat formula
