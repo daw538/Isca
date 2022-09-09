@@ -392,6 +392,12 @@ integer :: i, j, n, kb, ie, je, ntr, nlev
 ! store information needed by flux_exchange module
 
     Tri_surf%delta_t (is:ie,js:je) = delta_t_n + mu_delt_n*nu_n*f_t_delt_n1
+    !write(6,*) 'SFLX: Tri_surf%delta_t', Tri_surf%delta_t
+    !write(6,*) 'SFLX: delta_t_n', delta_t_n
+    !write(6,*) 'SFLX: mu_delt_n', mu_delt_n
+    !write(6,*) 'SFLX: nu_n', nu_n
+    !write(6,*) 'SFLX: f_t_delt_n1', f_t_delt_n1
+    
     Tri_surf%dflux_t (is:ie,js:je) = -nu_n*(1.0 - e_n1)
     if (sphum/=NO_TRACER) then
        Tri_surf%delta_tr (is:ie,js:je,sphum) = delta_q_n + mu_delt_n*nu_n*f_q_delt_n1
@@ -613,7 +619,10 @@ real    :: half_delt, cp_inv
     dt_v_temp = dt_v - dt_v_temp
     dissipative_heat = - cp_inv*( (u + half_delt*dt_u_temp)*dt_u_temp &
                                  +(v + half_delt*dt_v_temp)*dt_v_temp )
+    !write(6,*) 'SFLX: dissipative_heat', dissipative_heat
+    !write(6,*) 'SFLX: dt_t_init', dt_t
     dt_t = dt_t + dissipative_heat
+    !write(6,*) 'SFLX: dt_t_final', dt_t
  else
     dissipative_heat = 0.0
  endif
@@ -836,8 +845,15 @@ integer :: i, j, kb, nlev
 !-----------------------------------------------------------------------
 
 ! local copy of input 
+
+  !write(6,*) 'SFLX: dt_xi_1', dt_xi_1
+  !write(6,*) 'SFLX: xi_1', xi_1
+        
   dt_xi_11 = dt_xi_1
   dt_xi_22 = dt_xi_2
+  
+  !write(6,*) 'SFLX: dt_xi_11', dt_xi_11
+  !write(6,*) 'SFLX: xi_1', xi_1
 
  call explicit_tend (mu, nu, xi_1, dt_xi_11)
  call explicit_tend (mu, nu, xi_2, dt_xi_22)
@@ -869,6 +885,9 @@ integer :: i, j, kb, nlev
      f_2_delt_n1(:,:)  =     f_2(:,:,nlev-1)*delt
         delta_1_n(:,:)  = dt_xi_11(:,:,nlev  )*delt
         delta_2_n(:,:)  = dt_xi_22(:,:,nlev  )*delt
+        !write(6,*) 'SFLX: dt_xi_11_end', dt_xi_11
+        !write(6,*) 'SFLX: xi_1', xi_1
+        !write(6,*) 'SFLX: delt', delt
  endif
 
 
