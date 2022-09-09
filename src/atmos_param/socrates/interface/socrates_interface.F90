@@ -922,6 +922,9 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
                 true_anomaly = 0.
                 rrsun = 0.
              endif
+             
+             !write(6,*) 'output_heating_rate_sw', real(output_heating_rate_sw)
+             !write(6,*) 'output_heating_rate_lw', real(output_heating_rate_lw)
 
              temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_sw)+real(output_heating_rate_lw)
              output_heating_rate_total = output_heating_rate_sw +output_heating_rate_lw   
@@ -1125,6 +1128,20 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        albedo_soc = REAL(albedo_in, kind(r_def))
        z_full_soc = REAL(z_full_in, kind(r_def))
        z_half_soc = REAL(z_half_in, kind(r_def))
+       
+       !write(6,*) 'SOC 4', rad_lat_soc
+       !write(6,*) 'SOC rad_lon_soc', rad_lon_soc
+       !write(6,*) 'SOC soc_lw_mode', soc_lw_mode
+       !write(6,*) 'SOC tg_tmp_soc', tg_tmp_soc
+       !write(6,*) 'SOC q_soc', q_soc
+       !write(6,*) 'SOC ozone_soc', ozone_soc
+       !write(6,*) 'SOC co2_soc', co2_soc
+       !write(6,*) 'SOC t_surf_for_soc', t_surf_for_soc
+       !write(6,*) 'SOC p_full_soc', p_full_soc
+       !write(6,*) 'SOC p_half_soc', p_half_soc
+       !write(6,*) 'SOC z_full_soc', z_full_soc
+       !write(6,*) 'SOC z_half_soc', z_half_soc
+       !write(6,*) '**** END ****'
 
        CALL socrates_interface(Time, rad_lat_soc, rad_lon_soc, soc_lw_mode,  &
             tg_tmp_soc, q_soc, ozone_soc, co2_soc, t_surf_for_soc, p_full_soc, p_half_soc, z_full_soc, z_half_soc, albedo_soc, coszen, rrsun, n_profile, n_layer,     &
@@ -1138,6 +1155,7 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        thd_lw_flux_up = REAL(output_soc_flux_lw_up)
        thd_lw_flux_down = REAL(output_soc_flux_lw_down)
 
+       write(6,*) 'output_heating_rate_lw', real(output_heating_rate_lw)
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_lw)
        
        ! SW calculation
@@ -1154,7 +1172,7 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        toa_sw_down(:,:) = REAL(output_soc_flux_sw_down(:,:,1))
        thd_sw_flux_net = REAL(output_soc_flux_sw_up - output_soc_flux_sw_down)
 
-
+       write(6,*) 'output_heating_rate_sw', real(output_heating_rate_sw)
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_sw)
        
        output_heating_rate_total = output_heating_rate_lw + output_heating_rate_sw
