@@ -42,12 +42,11 @@ LOGICAL :: l_planet_grey_surface = .TRUE.
   logical :: do_condensate_ch4 = .FALSE. ! If true radation is fed mixing ratio based upon model specific humidity, otherwise global value set bu ch4_mixing_ratio
   real(r_def) :: ch4_mix_ratio = 1.006e-06 ! Default mass mixing ratio for methane if not being considered as a condensing species
   
-
   logical :: do_scm_ozone=.false. ! read single column ozone from namelist? note: ONLY when using SCM
   real(r_def), dimension(100) :: scm_ozone = -1 ! input array for single column ozone. max number of levels = 100 
 
   logical :: use_pressure_interp_for_half_levels = .False. !By default (.False.) does linear interpolation in height for half-level temperatures. True does linear interp using pressure. 
-      
+
   ! Incoming radiation options for namelist
   
   integer   :: solday=0  ! if >0, do perpetual run corresponding to day of the year = solday \in [0,days per year]

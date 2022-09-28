@@ -1669,7 +1669,7 @@ id_zfull   = register_diag_field(mod_name, &
       'height',  axes_3d_full,       Time, 'geopotential height at full model levels','m')
 
 id_uz = register_diag_field(mod_name, &
-	  'ucomp_height',axes_3d_full,     Time, 'zonal wind * geopotential height at full model levels', 'm**2sec')
+	  'ucomp_height',axes_3d_full,     Time, 'zonal wind * geopotential height at full model levels', 'm**2/sec')
 
 id_vz = register_diag_field(mod_name, &
       'vcomp_height',axes_3d_full,     Time, 'meridional wind * geopotential height at full model levels', 'm**2/sec')
@@ -1685,7 +1685,6 @@ id_slp = register_diag_field(mod_name, &
       
 id_sphum_vert_int   = register_diag_field(mod_name, &
       'sphum_vert_int', (/id_lon,id_lat/),    Time, 'vertical column mass of specific humidity', 'kg/m2')
-
 
 if(id_slp > 0) then
   gamma = 0.006
@@ -1951,7 +1950,6 @@ subroutine tracer_vertical_integral(p_half, grid_tracers, nhum, vert_int_sphum)
   real, intent(in), dimension(is:, js:, :) :: p_half
   real, intent(in), dimension(is:, js:, :, :, :) :: grid_tracers
   real, intent(out), dimension(is:ie, js:je) :: vert_int_sphum
-
   real, dimension(is:ie, js:je, num_levels)  :: p_half_diff, ppress_sphum
 
   p_half_diff = p_half(:,:,1:num_levels) - p_half(:,:,2:num_levels+1)
