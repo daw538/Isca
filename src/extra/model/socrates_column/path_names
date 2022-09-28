@@ -16,6 +16,7 @@ atmos_param/sea_esf_rad/null/rad_utilities.F90
 atmos_param/shallow_conv/shallow_conv.F90
 atmos_param/stable_bl_turb/stable_bl_turb.F90
 atmos_param/strat_cloud/null/strat_cloud.F90
+atmos_param/cloud_simple/cloud_simple.F90
 atmos_param/two_stream_gray_rad/two_stream_gray_rad.F90
 atmos_param/qflux/qflux.f90
 atmos_param/monin_obukhov/monin_obukhov_interfaces.h
@@ -567,6 +568,7 @@ atmos_param/socrates/src/trunk/src/general/read_word.f
 atmos_param/socrates/interface/read_control.F90
 atmos_param/socrates/interface/set_atm.F90
 atmos_param/socrates/interface/set_cld.F90
+atmos_param/socrates/interface/socrates_set_cld.F90
 atmos_param/socrates/interface/set_dimen.F90
 atmos_param/socrates/interface/socrates_config_mod.f90
 atmos_param/socrates/interface/compress_spectrum.F90
