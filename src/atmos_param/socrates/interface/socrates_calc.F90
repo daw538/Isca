@@ -215,7 +215,27 @@ do l=1, n_profile
     heating_rate(l, i) = (radout%flux_down(l,i-1,1)-radout%flux_down(l,i,1)    &
                         + radout%flux_up(l,i,1)-radout%flux_up(l,i-1,1))       &
                        / layer_heat_capacity(l, i)
+                       
+                       
+    !write(6,*) 'SOC_CALC heating_rate(l,i)', real(heating_rate(l, i))
+    write(*,100) i-1, real(radout%flux_down(l,i-1,1)), i, real(radout%flux_down(l,i,1))
+    100 format('SOC_CALC radout%flux_down(l,',i3,'): ',e15.5,'     radout%flux_down(l,',i3,'): ',e15.5)
+    write(*,200) i, real(radout%flux_up(l,i,1)), i-1, real(radout%flux_up(l,i-1,1))
+    200 format('SOC_CALC radout%flux_up(l,',i3,'): ',e15.5,'     radout%flux_up(l,',i3,'): ',e15.5)
+    write(*,300) i, real(layer_heat_capacity(l, i))
+    300 format('SOC_CALC layer_heat_capacity(l,',i3,'): ',f15.5)
+    !write(6,*) 'SOC_CALC radout%flux_down(l,',i-1,')', real(radout%flux_down(l,i-1,1))
+    !write(6,*) 'SOC_CALC radout%flux_down(l,',i,')', real(radout%flux_down(l,i,1))
+    !write(6,*) 'SOC_CALC radout%flux_up(l,',i,')', real(radout%flux_up(l,i,1))
+    !write(6,*) 'SOC_CALC radout%flux_up(l,',i-1,')', real(radout%flux_up(l,i-1,1))
+    !write(6,*) 'SOC_CALC layer_heat_capacity(l,',i,')', real(layer_heat_capacity(l, i))
+    
+    write(6,*) ''
   end do
+  write(6,*) '**** End of directional sweep ****'
+  write(6,*) ''
+  write(6,*) ''
+  write(6,*) ''
 end do
 
 do l=1, n_profile

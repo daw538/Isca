@@ -1388,7 +1388,7 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        thd_lw_flux_up = REAL(output_soc_flux_lw_up)
        thd_lw_flux_down = REAL(output_soc_flux_lw_down)
 
-       write(6,*) 'output_heating_rate_lw', real(output_heating_rate_lw)
+       !write(6,*) 'output_heating_rate_lw', real(output_heating_rate_lw)
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_lw)
        
 
@@ -1417,13 +1417,13 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
 
        thd_sw_flux_net = REAL(output_soc_flux_sw_up - output_soc_flux_sw_down) !net sw all levels
 
-       write(6,*) 'output_heating_rate_sw', real(output_heating_rate_sw)
        toa_sw_down(:,:)       = REAL(output_soc_flux_sw_down(:,:,1))
        toa_sw_down_clear(:,:) = REAL(output_soc_flux_sw_down_clear(:,:,1))
 
        surf_sw_down(:,:)       = REAL(output_soc_flux_sw_down(:,:, n_layer+1))
        surf_sw_down_clear(:,:) = REAL(output_soc_flux_sw_down_clear(:,:, n_layer+1))
 
+       !write(6,*) 'output_heating_rate_sw', real(output_heating_rate_sw)
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_sw)
        
        output_heating_rate_total = output_heating_rate_lw + output_heating_rate_sw
