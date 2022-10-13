@@ -97,7 +97,7 @@ control%l_mixing_ratio         = .TRUE.
 ! Gaseous absorption
 control%l_gas          = .TRUE.
 control%l_continuum    = .TRUE.
-if (do_cia == .true.) then
+if (do_cia .eqv. .true.) then
   control%l_cont_gen     = .TRUE.
 else
   control%l_cont_gen     = .FALSE.
