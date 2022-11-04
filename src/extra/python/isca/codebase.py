@@ -400,11 +400,16 @@ class SocColumnCodeBase(CodeBase):
                 self.log.error(error_mesg)
                 raise OSError(error_mesg)
 
+    def read_version_specific_paths(self, socrates_version_to_use):
+        self.extra_path_names = self.read_path_names(P(self.srcdir, 'extra', 'model', self.name, 'socrates_version_paths', socrates_version_to_use))        
+
     def __init__(self, *args, **kwargs):
         super(SocColumnCodeBase, self).__init__(*args, **kwargs)
         self.column_model()
         self.disable_rrtm()
         self.simlink_to_soc_code()
+        socrates_version_to_use = kwargs['socrates_version']
+        self.read_version_specific_paths(socrates_version_to_use)
 
 class GreyCodeBase(CodeBase):
     """The Frierson model.
