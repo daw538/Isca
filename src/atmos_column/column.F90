@@ -399,7 +399,7 @@ vg_final  =  vg(:,:,:,previous)
 tg_final  =  tg(:,:,:,current)
 grid_tracers_final(:,:,:,time_level_out,:) = grid_tracers(:,:,:,current,:)
 
-write(6,*) '**** Completed timestep ****'
+!write(6,*) '**** Completed timestep ****'
 
 return 
 end subroutine column 

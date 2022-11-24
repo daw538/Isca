@@ -1391,7 +1391,8 @@ subroutine run_socrates(Time, Time_diag, rad_lat, rad_lon, temp_in, q_in, t_surf
        !write(6,*) 'output_heating_rate_lw', real(output_heating_rate_lw)
        temp_tend(:,:,:) = temp_tend(:,:,:) + real(output_heating_rate_lw)
        
-
+	   !call error_mesg( 'socrates_init', &
+       !                  '**** DEBUG STOP STATEMENT FOR LW CALC ONLY ****',FATAL)
        ! SW calculation
        ! Retrieve output_heating_rate, and downward surface SW and LW fluxes
        soc_lw_mode = .FALSE.

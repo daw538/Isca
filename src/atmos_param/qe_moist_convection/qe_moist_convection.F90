@@ -40,7 +40,7 @@ module qe_moist_convection_mod
                                  close_file
   use sat_vapor_pres_mod, only:  escomp, descomp
   use      constants_mod, only:  HLv, HLs, Cp_air, Grav, rdgas, rvgas, &
-                                 kappa
+                                 kappa, PSTD_MKS
 
   implicit none
   private
@@ -71,8 +71,8 @@ module qe_moist_convection_mod
   real    :: val_min = -1.0  ! calculated in get_lcl_temp_table_size
   real    :: val_max = 1.0   ! calculated in get_lcl_temp_table_size
 
-  real, parameter  :: small = 1.e-10, &  ! to avoid division by 0 in dry limit
-                      pref  = 1.e5
+  real, parameter  :: small = 1.e-10  ! to avoid division by 0 in dry limit
+  !                    pref  = 1.e5
 
   real, allocatable, dimension(:) :: lcl_temp_table
 
@@ -159,6 +159,7 @@ contains
     
     call get_val_min_max()
     lcl_temp_table_size = ceiling( (val_max-val_min)/val_inc )
+    !write(6,*) 'vmin', val_min, 'vmax', val_max, 'dval', val_inc, 'size', lcl_temp_table_size
     
   end subroutine get_lcl_temp_table_size
   !#######################################################################
@@ -174,6 +175,12 @@ contains
     
     val_min = log(esmin/(Tmin**(1.0/kappa))) 
     val_max = log(esmax/(Tmax**(1.0/kappa)))
+    
+    !write(6,*) 'esmin', esmin
+    !write(6,*) 'esmax', esmax
+    
+    !write(6,*) 'valmin', val_min
+    !write(6,*) 'valmax', val_max
 
   end subroutine get_val_min_max
 
@@ -188,8 +195,11 @@ contains
     lcl_temp_guess = Tmin
     do k=1, size(lcl_temp_table, 1)
        lcl_temp_table(k) = lcl_temp(val_min + (k-1)*val_inc, lcl_temp_guess)
+       write(6,*) 'lcl_temp_table', lcl_temp_table(k), 'vmin+(k-1)*dval', val_min + (k-1)*val_inc, 'k-1', k-1, 'dval', val_inc, 'lcl_temp_guess', lcl_temp_guess
        lcl_temp_guess     = lcl_temp_table(k)
     end do
+    
+    
     
   end subroutine generate_lcl_table
 
@@ -542,32 +552,34 @@ contains
        !38 format(f5.2,2x,f5.2,2x,f5.2,2x,f5.2)
        !close(38)
        ! If the lowest level is not saturated, calculate temperature of saturation
-       theta0 = Tin(k_surface) * (pref/p_full(k_surface))**kappa
+       theta0 = Tin(k_surface) * (PSTD_MKS/p_full(k_surface))**kappa
        !write(6,*) 'SBM Tsat (issat): ', theta0
        
        if (r0 .le. 0) then
           ! If the mixing ratio r0 <= 0, LCL is the top of model
           pLCL = p_full(1)
-          TLCL = theta0 * (pLCL/pref)**kappa
+          TLCL = theta0 * (pLCL/PSTD_MKS)**kappa
           skip = .true.
        else
           ! If the mixing ratio r0 > 0, calculate LCL temperature and temperature
-          value = log( theta0**(-1./kappa) * pref*r0 / (rdgas/rvgas + r0) )
+          value = log( theta0**(-1./kappa) * PSTD_MKS*r0 / (rdgas/rvgas + r0) )
+          !write(6,*) 'Tsurf', Tin(k_surface), 'psurf', p_full(k_surface)
+          !write(6,*) 'theta0', theta0, 'kappa', kappa, 'pref', PSTD_MKS, 'r0', r0, 'rdgas', rdgas, 'rvgas', rvgas
           
           call get_lcl_temp(lcl_temp_table, value, val_min, val_max, TLCL)
-          pLCL = pref * (TLCL/theta0)**(1./kappa)
+          pLCL = PSTD_MKS * (TLCL/theta0)**(1./kappa)
          
           if (pLCL .lt. p_full(1)) then
              ! If the pLCL is above model domain, use values at top of the model
              pLCL = p_full(1)
-             TLCL = theta0 * (pLCL/pref)**kappa
+             TLCL = theta0 * (pLCL/PSTD_MKS)**kappa
           end if
           
           ! Calculate parcel temperature and CIN below LCL by upward integration
           k   = k_surface
           CIN = 0.
           do while (p_full(k) .gt. pLCL)
-             Tp(k) = theta0 * (p_full(k)/pref)**kappa
+             Tp(k) = theta0 * (p_full(k)/PSTD_MKS)**kappa
              
              !if (Tp(k) .lt. 70.0) then
              !  write(6,*) 'SBM Tk: ', Tp(k)
