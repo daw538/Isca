@@ -195,7 +195,7 @@ contains
     lcl_temp_guess = Tmin
     do k=1, size(lcl_temp_table, 1)
        lcl_temp_table(k) = lcl_temp(val_min + (k-1)*val_inc, lcl_temp_guess)
-       write(6,*) 'lcl_temp_table', lcl_temp_table(k), 'vmin+(k-1)*dval', val_min + (k-1)*val_inc, 'k-1', k-1, 'dval', val_inc, 'lcl_temp_guess', lcl_temp_guess
+       !write(6,*) 'lcl_temp_table', lcl_temp_table(k), 'vmin+(k-1)*dval', val_min + (k-1)*val_inc, 'k-1', k-1, 'dval', val_inc, 'lcl_temp_guess', lcl_temp_guess
        lcl_temp_guess     = lcl_temp_table(k)
     end do
     

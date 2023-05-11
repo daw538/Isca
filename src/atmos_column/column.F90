@@ -99,6 +99,7 @@ logical :: json_logging = .false.
 real, dimension(2) :: valid_range_t = (/100.,500./)
 
 logical :: enforce_col_rh = .false.
+real :: col_rh_value
 character(len=256) :: rh_prof_file_name  = 'INPUT/rh_profile.nc'
 character(len=256) :: rh_prof_field_name = 'rh'
 
@@ -110,7 +111,7 @@ namelist /column_nml/ use_virtual_temperature, valid_range_t, &
                       p_press, p_sigma, exponent, &
                       initial_state_option, initial_sphum, graceful_shutdown, &
                       raw_filter_coeff, robert_coeff, json_logging, &
-                      enforce_col_rh, rh_prof_file_name, rh_prof_field_name
+                      enforce_col_rh, col_rh_value, rh_prof_file_name, rh_prof_field_name
                       
 real, allocatable, dimension(:,:,:) :: rh_prof_inputs
 !real, allocatable, dimension(:,:,:,:) :: enforced_rh ! (lat,lon,pfull,time)
@@ -214,7 +215,10 @@ subroutine column_init(Time, Time_step_in, tracer_attributes, dry_model_out, nhu
 
       else
         call error_mesg('column','Enforced RH input profile called' // &
-                     ' but '//trim(rh_prof_file_name)//' does not exist', FATAL)
+                     ' but '//trim(rh_prof_file_name)//' does not exist or value not specified', NOTE)
+        call error_mesg('column','Using constant value specified in col_rh_value', NOTE)
+        rh_prof_inputs = col_rh_value
+        write(6,*) col_rh_value
       endif
     endif
 
@@ -263,7 +267,7 @@ real, dimension(is:ie, js:je, num_levels, num_tracers) :: dt_tracers_tmp
 integer :: p, seconds, days
 real :: delta_t
 real    :: extrtmp
-integer :: ii,jj,kk,i1,j1,k1
+integer :: ii,jj,kk,i1,j1,k1,klev
 integer :: ntr
 
 logical :: pe_is_valid = .true.
@@ -271,6 +275,7 @@ logical :: r_pe_is_valid = .true.
 
 real, dimension(is:is, js:js, num_levels)  :: enforced_e
 real, dimension(is:is, js:js, num_levels)  :: enforced_es
+real, dimension(is:is, js:js, num_levels)  :: enforced_q
 
 ! THIS IS WHERE I NEED TO START FROM... 
 ! TO DO: LOCAL VARIABLES, CHECK INPUTS, HOOK UP TO ATMOSPHERE.F90 AND GLOBAL VARIABLE DEFINTIONS 
@@ -299,7 +304,17 @@ endif
 call leapfrog_3d_real(tg, dt_tg, previous, current, future, delta_t, robert_coeff, raw_filter_coeff)
 
 if (enforce_col_rh) then
+  !write(6,*) 'are we enforcing RH?', enforce_col_rh
+  
   call LOOKUP_ES(tg(:,:,:,current), enforced_es)
+  enforced_e = enforced_es * rh_prof_inputs
+  enforced_q = (enforced_e * (rdgas/rvgas))/(p_full + ((rdgas/rvgas) - 1)*enforced_e) 
+  DO klev = 1, num_levels
+  	enforced_q(:,:,klev) = MAX(enforced_q(:,:,klev), enforced_e(:,:,klev))
+  END DO
+  grid_tracers(:,:,:,current,nhum) =  ((rdgas/rvgas) * enforced_e) / (enforced_q)
+  !END DO
+  !write(6,*) grid_tracers  
 endif
 
 if(minval(tg(:,:,:,future)) < valid_range_t(1) .or. maxval(tg(:,:,:,future)) > valid_range_t(2)) then
@@ -374,12 +389,13 @@ do ntr = 1, num_tracers
   call leapfrog_3d_real(grid_tracers(:,:,:,:,ntr),dt_tracers_tmp(:,:,:,ntr),previous,current,future,delta_t,tracer_attributes(ntr)%robert_coeff, raw_filter_coeff)
 enddo 
 
-if (enforce_col_rh) then
+!if (enforce_col_rh) then
   !call LOOKUP_ES(tg(:,:,:,current), enforced_es)
-  enforced_e = enforced_es * rh_prof_inputs
-  grid_tracers(:,:,:,current,nhum) = (enforced_e * (rdgas/rvgas))/(p_full + ((rdgas/rvgas) - 1)*enforced_e)   
+!  enforced_e = enforced_es * rh_prof_inputs
+!  grid_tracers(:,:,:,current,nhum) = (enforced_e * (rdgas/rvgas))/(p_full + ((rdgas/rvgas) - 1)*enforced_e)   
   !grid_tracers(:,:,:,current,nhum) = enforced_q
-endif
+  !write(6,*) rh_prof_inputs
+!endif
 
 
 previous = current
