@@ -154,6 +154,7 @@ integer :: future
 real :: init_bucket_depth = 1000. ! default large value
 real :: init_bucket_depth_land = 20. 
 real :: max_bucket_depth_land = 0.15 ! default from Manabe 1969
+real :: bucket_ml_evap_threshold = 0.75 ! default from Manabe 1969 (Depth of total capacity at which evap behaves like mixed layer)
 real :: robert_bucket = 0.04   ! default robert coefficient for bucket depth LJJ
 real :: raw_bucket = 0.53       ! default raw coefficient for bucket depth LJJ
 real :: damping_coeff_bucket = 0.
@@ -169,8 +170,8 @@ namelist / idealized_moist_phys_nml / turb, lwet_convection, do_bm, do_ras, roug
                                       land_roughness_prefactor,               &
                                       gp_surface, convection_scheme,          &
                                       bucket, bucket_type, bucket_file_name, bucket_field_name, & 
-                                      init_bucket_depth, init_bucket_depth_land, &
-                                      max_bucket_depth_land, robert_bucket, raw_bucket, do_lscale_cond, &
+                                      init_bucket_depth, init_bucket_depth_land, max_bucket_depth_land, &
+                                      bucket_ml_evap_threshold, robert_bucket, raw_bucket, do_lscale_cond, &
                                       do_socrates_radiation, finite_bucket_depth_over_land, damping_coeff_bucket
 
 
@@ -1158,6 +1159,7 @@ if(.not.gp_surface) then
                                        bucket,                              & 
                     bucket_depth(:,:,current),                              &
                         max_bucket_depth_land,                              &
+                     bucket_ml_evap_threshold,                              &
                          depth_change_lh(:,:),                              &
                        depth_change_conv(:,:),                              &
                        depth_change_cond(:,:),                              &

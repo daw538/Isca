@@ -338,8 +338,9 @@ contains
 subroutine surface_flux_1d (                                           &
      t_atm,     q_atm_in,   u_atm,     v_atm,     p_atm,     z_atm,    &
      p_surf,    t_surf,     t_ca,      q_surf,                         &
-	 bucket, bucket_depth, max_bucket_depth_land,                      & !RG Add bucket
-     depth_change_lh_1d, depth_change_conv_1d, depth_change_cond_1d,   & !RG Add bucket
+	  bucket, bucket_depth, max_bucket_depth_land,                      &
+     bucket_ml_evap_threshold,                                         &
+     depth_change_lh_1d, depth_change_conv_1d, depth_change_cond_1d,   &
      u_surf,    v_surf,                                                &
      rough_mom, rough_heat, rough_moist, rough_scale, gust,            &
      flux_t, flux_q, flux_r, flux_u, flux_v,                           &
@@ -377,7 +378,7 @@ subroutine surface_flux_1d (                                           &
   real, intent(inout), dimension(:) :: bucket_depth                              !RG Add bucket
   real, intent(inout), dimension(:) :: depth_change_lh_1d                        !RG Add bucket
   real, intent(in), dimension(:) :: depth_change_conv_1d, depth_change_cond_1d   !RG Add bucket
-  real, intent(in) :: max_bucket_depth_land
+  real, intent(in) :: max_bucket_depth_land, bucket_ml_evap_threshold
   real, intent(in) :: dt
 
   ! ---- local constants -----------------------------------------------------
@@ -616,10 +617,10 @@ subroutine surface_flux_1d (                                           &
 	  where (avail)
 	      ! begin LJJ addition
   		where(land)
-			where (bucket_depth >= max_bucket_depth_land*0.75)
+			where (bucket_depth >= max_bucket_depth_land*bucket_ml_evap_threshold)
 				flux_q    =  rho_drag * (q_surf0 - q_atm)
 			elsewhere	
-                flux_q    =  bucket_depth/(max_bucket_depth_land*0.75) * rho_drag * (q_surf0 - q_atm) ! flux of water vapor  (Kg/(m**2 s))
+                flux_q    =  bucket_depth/(max_bucket_depth_land*bucket_ml_evap_threshold) * rho_drag * (q_surf0 - q_atm) ! flux of water vapor  (Kg/(m**2 s))
 			end where
 		elsewhere
 	        flux_q    =  rho_drag * (q_surf0 - q_atm) ! flux of water vapor  (Kg/(m**2 s))
@@ -639,10 +640,10 @@ subroutine surface_flux_1d (                                           &
 	      dedq_surf = 0.
 	      dedq_atm = -rho_drag ! d(latent heat flux)/d(atmospheric mixing ratio)
 		  where(land)
-			  where (bucket_depth >= max_bucket_depth_land*0.75)
+			  where (bucket_depth >= max_bucket_depth_land*bucket_ml_evap_threshold)
 				  dedt_surf =  rho_drag * (q_sat1 - q_sat) *del_temp_inv
 			  elsewhere
-      	          dedt_surf =  bucket_depth/(max_bucket_depth_land*0.75) * rho_drag * (q_sat1 - q_sat) *del_temp_inv
+      	          dedt_surf =  bucket_depth/(max_bucket_depth_land*bucket_ml_evap_threshold) * rho_drag * (q_sat1 - q_sat) *del_temp_inv
 			  end where
 		  elsewhere
  	          dedt_surf =  rho_drag * (q_sat1 - q_sat) *del_temp_inv
@@ -783,7 +784,7 @@ subroutine surface_flux_0d (                                                 &
   real, dimension(1) :: bucket_depth                                 !RG Add bucket 
   real, dimension(1) :: depth_change_lh_1d                           !RG Add bucket
   real, dimension(1) :: depth_change_conv_1d, depth_change_cond_1d   !RG Add bucket
-  real :: max_bucket_depth_land  !RG Add bucket
+  real :: max_bucket_depth_land, bucket_ml_evap_threshold  !RG Add bucket
 
   avail = .true.
 
@@ -811,8 +812,9 @@ subroutine surface_flux_0d (                                                 &
   call surface_flux_1d (                                                 &
        t_atm,     q_atm,      u_atm,     v_atm,     p_atm,     z_atm,    &
        p_surf,    t_surf,     t_ca,      q_surf,                         &
-	   bucket, bucket_depth, max_bucket_depth_land,                      & !RG Add bucket
-       depth_change_lh_1d, depth_change_conv_1d, depth_change_cond_1d,   & !RG Add bucket
+	    bucket, bucket_depth, max_bucket_depth_land,                      &
+       bucket_ml_evap_threshold,                                         &
+       depth_change_lh_1d, depth_change_conv_1d, depth_change_cond_1d,   &
        u_surf,    v_surf,                                                &
        rough_mom, rough_heat, rough_moist, rough_scale, gust,            &
        flux_t, flux_q, flux_r, flux_u, flux_v,                           &
@@ -860,8 +862,9 @@ end subroutine surface_flux_0d
 subroutine surface_flux_2d (                                           &
      t_atm,     q_atm_in,   u_atm,     v_atm,     p_atm,     z_atm,    &
      p_surf,    t_surf,     t_ca,      q_surf,                         &
-	 bucket, bucket_depth, max_bucket_depth_land,                      & !RG Add bucket
-     depth_change_lh,   depth_change_conv,   depth_change_cond,        & !RG Add bucket
+	  bucket, bucket_depth, max_bucket_depth_land,                      &
+     bucket_ml_evap_threshold,                                         &
+     depth_change_lh,   depth_change_conv,   depth_change_cond,        &
      u_surf,    v_surf,                                                &
      rough_mom, rough_heat, rough_moist, rough_scale, gust,            &
      flux_t,    flux_q,     flux_r,    flux_u,    flux_v,              &
@@ -896,7 +899,7 @@ subroutine surface_flux_2d (                                           &
   real, intent(inout), dimension(:,:) :: bucket_depth ! RG Add bucket
   real, intent(inout), dimension(:,:) :: depth_change_lh ! RG Add bucket
   real, intent(in), dimension(:,:)    :: depth_change_conv, depth_change_cond ! RG Add bucket
-  real, intent(in) :: max_bucket_depth_land  ! RG Add bucket
+  real, intent(in) :: max_bucket_depth_land, bucket_ml_evap_threshold  ! RG Add bucket
   real, intent(in) :: dt
 
   ! ---- local vars -----------------------------------------------------------
@@ -906,7 +909,7 @@ subroutine surface_flux_2d (                                           &
      call surface_flux_1d (                                           &
           t_atm(:,j),     q_atm_in(:,j),   u_atm(:,j),     v_atm(:,j),     p_atm(:,j),     z_atm(:,j),    &
           p_surf(:,j),    t_surf(:,j),     t_ca(:,j),      q_surf(:,j),                                   &
-		  bucket, bucket_depth(:,j), max_bucket_depth_land,                                               & !RG Add bucket
+		  bucket, bucket_depth(:,j), max_bucket_depth_land, bucket_ml_evap_threshold,                       & !RG Add bucket
           depth_change_lh(:,j), depth_change_conv(:,j), depth_change_cond(:,j),                           & !RG Add bucket
           u_surf(:,j),    v_surf(:,j),                                                                    &
           rough_mom(:,j), rough_heat(:,j), rough_moist(:,j), rough_scale(:,j), gust(:,j),                 &
